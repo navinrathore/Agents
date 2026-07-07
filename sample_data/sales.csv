@@ -1,0 +1,12 @@
+date,product,category,quantity,price,revenue,region
+2026-01-01,Widget A,Gadgets,10,25.0,250.0,North
+2026-01-02,Widget B,Gadgets,5,40.0,200.0,South
+2026-01-02,Widget A,Gadgets,12,25.0,300.0,North
+2026-01-03,Super Gizmo,Gizmos,8,100.0,800.0,East
+2026-01-04,Widget C,Gadgets,20,15.0,300.0,West
+2026-01-05,,Gizmos,5,100.0,500.0,East
+2026-01-06,Widget A,Gadgets,10,25.0,250.0,North
+2026-01-07,Widget B,Gadgets,,40.0,,South
+2026-01-08,Super Gizmo,Gizmos,2,100.0,200.0,West
+2026-01-09,Widget C,Gadgets,15,15.0,225.0,East
+2026-01-10,Widget A,Gadgets,8,25.0,200.0,North
