@@ -81,3 +81,29 @@ Instead of loading all instructions into the system prompt at the start of a ses
 ### C. Architectural Alignment
 By placing the static core prompt at the very beginning of the payload and injecting only the relevant SOP at the end, we maximize cache hits while focusing the model's reasoning on the exact procedure required.
 
+### D. Enterprise Recommendation: Prompt-RAG
+For enterprise setups with hundreds or thousands of specialized SOPs, manual keyword mapping (like keyphrase checklists in the codebase) becomes unmaintainable. 
+- **Preferred Solution**: Implement a **Prompt-RAG (Retrieval-Augmented Generation for Prompts)** architecture.
+- **Mechanism**: Store and index all procedural guides, runbooks, and domain directives in a vector database. At session initialization, perform a semantic similarity search on the user's input request and retrieve only the top relevant instructions to append to the prompt.
+- **Benefit**: Restores maintenance simplicity, handles complex semantic search queries, and decouples prompt maintenance entirely from the application codebase.
+
+---
+
+## 6. Prompt Management & Externalization
+
+To prevent prompt coupling, decrease maintenance overhead, and allow version control, prompts should never be hardcoded in application logic. Adopt one of the following methodologies based on scale:
+
+### A. Prompts-as-Code (File-Based Templates)
+* **Method**: Keep system prompts, few-shot examples, and output instructions in standard text or Markdown files inside a dedicated `prompts/` directory.
+* **Rendering**: Use a lightweight templating engine like **Jinja2** to dynamically compile templates with runtime variables (e.g. data schemas, user histories).
+* **Best For**: Development setups where prompts are updated and tested in locked step with code releases.
+
+### B. Declarative Manifests
+* **Method**: Bundle system prompts and instructions alongside configuration parameters (temperature, model identifier, context window constraints, tool schemas) in a unified config file (e.g., `spec.yaml` or `manifest.json`).
+* **Best For**: Simple config-driven agents where configurations map directly to agent instances.
+
+### C. External Prompt Registries
+* **Method**: Centralize prompt storage in an external prompt registry (e.g. Langfuse, Langsmith, or custom databases). Retrieve templates dynamically at runtime via API calls using tags like `production` or specific version semantics (e.g. `v1.2.0`).
+* **Best For**: Enterprise-scale deployments. Decouples changes to prompts from application deployments, allowing hotfixes, continuous evaluation, and A/B testing.
+
+

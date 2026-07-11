@@ -7,3 +7,4 @@ The following items represent architectural improvements for the autonomous agen
 - [x] **Context Pruning**: Implement a token counter in the `BaseLLMClient`. When the context size approaches a threshold (e.g., 4000 tokens), replace older `user`/`assistant` turns with a summarized representation of the task progress.
 - [ ] **Amplitude MCP Integration (Phase 2 feature)**: Finalize the integration of the Model Context Protocol (MCP) server for direct querying of Amplitude product analytics.
 - [ ] **Robust Sandboxing**: Transition from the basic `PythonExecutor` subprocess to a secure Docker or Firecracker microVM for safe code execution in untrusted environments.
+- [ ] **Prompt-RAG for Enterprise Scale**: Replace the keyword-based `SOPRouter` with a Prompt-RAG system using a vector store (e.g. Chroma/pgvector) to semantically select and retrieve matching SOP instructions based on query context.
