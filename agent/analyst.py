@@ -2,6 +2,7 @@ import textwrap
 from .executor import PythonExecutor
 from .llm_clients import get_llm_client
 from .utils import ExecutionTimer, RepetitionDetector
+from .sops import SOPRouter
 
 class DataAnalystAgent:
     def __init__(self, config: dict, output_dir: str = "outputs"):
@@ -15,9 +16,16 @@ class DataAnalystAgent:
             pruning_config=self.config.get('context_pruning', {})
         )
         self.checklist = {}  # Internal task state: {task_name: is_complete}
+        self.sop_router = SOPRouter()
+        self.active_sop_name = None
+        self.active_sop_content = ""
         
     def _get_dynamic_system_prompt(self):
         base_prompt = self.config.get('system', '')
+        
+        # Inject the active SOP workflow guidelines at the end of the base prompt
+        if self.active_sop_content:
+            base_prompt = f"{base_prompt}\n\n### Active Workflow Guidelines (SOP)\n{self.active_sop_content}"
         
         if not self.use_checklist:
             return base_prompt
@@ -33,9 +41,13 @@ class DataAnalystAgent:
     def run(self, data_path: str, question: str):
         verbose = self.config.get("verbose", False)
         
+        # Dynamically route the query to the correct SOP
+        self.active_sop_name, self.active_sop_content = self.sop_router.route(question)
+        
         print(f"--- Starting Agent: {self.config.get('name')} ---")
         print(f"Dataset: {data_path}")
-        print(f"Question: {question}\n")
+        print(f"Question: {question}")
+        print(f"Routed SOP: {self.active_sop_name}\n")
         
         user_prompt = f"Dataset Path: {data_path}\nQuestion: {question}"
         self.llm.add_user_message(user_prompt)

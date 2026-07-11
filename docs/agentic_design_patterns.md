@@ -61,3 +61,23 @@ Because Agentic Rule files (like `AGENTS.md`) are ingested directly into the LLM
 1. **The Semantic Method (Recommended)**: Explicitly tag the rule with keywords like `[DISABLED]` or `[IGNORE]`. The LLM reads this tag and semantically understands it should temporarily ignore the instruction.
 2. **The HTML Comment Method**: Wrapping a rule in standard Markdown HTML comments (`<!-- rule -->`). LLMs are generally trained to treat these as hidden developer metadata, though it is less foolproof than explicit semantic tagging.
 3. **The "Cold Storage" Method (Foolproof)**: Physically cut the rule from the active `AGENTS.md` file and paste it into a backup file (e.g., `AGENTS_rules_backup.md`). Since the text is entirely removed from the active context window, it guarantees zero token consumption and zero chance of model confusion.
+
+---
+
+## 5. Declarative SOPs & Dynamic Workflow Injections
+
+### A. The Challenge: Prompt Bloat vs. Caching
+In advanced agent applications, the system prompt holds general behavioral rules, tool definitions, output schemas, and specialized domain instructions. As the number of supported use cases grows, the prompt bloats, which:
+- Increases context window usage and operational costs.
+- Causes latency to skyrocket.
+- Interferes with **Prompt Caching** (e.g., on Anthropic or Gemini), since any change in the system prompt forces the entire context state to be recompiled.
+
+### B. The Solution: Dynamic Workflow Injections
+Instead of loading all instructions into the system prompt at the start of a session, we decouple the agent's core instructions from domain-specific workflows:
+1. **Core Prompt**: A minimal, static guide explaining tool usage, the ReAct loop, output formats, and safety rails. This stays cached across all turns.
+2. **Declarative SOPs (Standard Operating Procedures)**: Specialized workflows (e.g., `data_cleaning.md`, `visualization.md`) stored as standalone markdown files outside application code.
+3. **Dynamic Router**: A routing agent or keyword analyzer evaluates the user's initial query, fetches the matching SOP, and appends it to the prompt.
+
+### C. Architectural Alignment
+By placing the static core prompt at the very beginning of the payload and injecting only the relevant SOP at the end, we maximize cache hits while focusing the model's reasoning on the exact procedure required.
+
