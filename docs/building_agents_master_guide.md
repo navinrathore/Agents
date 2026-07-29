@@ -283,23 +283,38 @@ cost:
 ## 5. Deep Dive: Architectural Facets
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│                         5.7 Observability & Tracing                      │
-│         (Dual Transcripts: transcript.jsonl / transcript_full.jsonl)     │
-├──────────────────────────────────────────────────────────────────────────┤
-│  5.1 Cognitive Brain      │  5.2 Control & Orchestration                 │
-│    - BaseLLMClient        │    - ReAct Loop Engine                       │
-│    - Prompt Caching       │    - Retry & Circuit Breakers                │
-│    - Structured Outputs   │    - Human-in-the-Loop Triggers              │
-├───────────────────────────┼──────────────────────────────────────────────┤
-│  5.3 Tool Design Patterns │  5.4 Memory & Context                        │
-│    - Pydantic Schemas     │    - Short-Term Conversation History          │
-│    - Idempotency Tags     │    - State Hydration & Checkpoints            │
-│    - Output Contracts     │    - Declarative SOP / Prompt-RAG             │
-├───────────────────────────┴──────────────────────────────────────────────┤
-│  5.5 Error Taxonomy & Escalation Ladder                                  │
-├──────────────────────────────────────────────────────────────────────────┤
-│  5.6 Security, Auth, Multi-Tenancy & Cost Governance                     │
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          5.7 Observability & Tracing                         │
+│          (Dual Transcripts: transcript.jsonl / transcript_full.jsonl)        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.10 Input Processing     │  5.8 Planning & Task Decomposition             │
+│    - Intent Classifier     │    - Plan-then-Execute / Dynamic Re-Planning   │
+│    - Complexity Estimator  │    - Checklist Grounding                       │
+│    - SOP/Skill Router      │                                                │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│  5.1 Cognitive Brain       │  5.2 Control & Orchestration                    │
+│    - BaseLLMClient         │    - ReAct Loop Engine                          │
+│    - Prompt Caching        │    - Retry & Circuit Breakers                   │
+│    - Structured Outputs    │    - Human-in-the-Loop Triggers                 │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│  5.3 Tool Design Patterns  │  5.4 Memory & Context                           │
+│    - Pydantic Schemas      │    - Short-Term History & Context Pruning        │
+│    - Idempotency Tags      │    - State Hydration & Checkpoints               │
+│    - MCP / Dynamic Disc.   │    - Long-Term Memory (Cross-Session)            │
+│    - Output Contracts      │    - Declarative SOP / Prompt-RAG                │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│  5.9 Reflection &          │  5.13 Grounding & Knowledge Retrieval (RAG)     │
+│    Self-Critique           │    - Agentic RAG vs. Pipeline RAG               │
+│    - Inner Critic Loop     │    - Retrieval as a Tool                        │
+│    - Verify-then-Return    │    - Grounding Verification                     │
+├────────────────────────────┴─────────────────────────────────────────────────┤
+│  5.5 Error Taxonomy & Escalation Ladder                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.11 Output Validation & Response Guardrails (PII, Schema, Safety)          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.12 Conversation Management (Clarification, Follow-ups, Corrections)       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.6 Security, Auth, Multi-Tenancy & Cost Governance                         │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -413,6 +428,27 @@ def execute_sql(input: ExecuteSQLInput) -> ToolResult:
 
 **Tool Composition Boundaries**: A tool should NOT internally call other tools. Tool composition should be orchestrated by the LLM's reasoning, not hidden in tool implementations. This keeps execution transparent and debuggable.
 
+**Tool Discovery & Dynamic Registration (MCP)**: In enterprise environments, agents need to connect to dozens of data sources and services. Rather than hardcoding every tool integration, use the **Model Context Protocol (MCP)** — an emerging standard (spearheaded by Anthropic) that decouples tools from agents.
+
+```
+Static Tool Registry (Traditional)          Dynamic Tool Discovery (MCP)
+┌──────────────────────┐                    ┌──────────────────────┐
+│  Agent Code          │                    │  Agent Code          │
+│  ├── tool_a.py       │                    │  └── MCP Client      │
+│  ├── tool_b.py       │                    │       │              │
+│  └── tool_c.py       │                    │       ├──► Postgres MCP Server
+│  (All hardcoded)     │                    │       ├──► Slack MCP Server
+└──────────────────────┘                    │       └──► Jira MCP Server
+                                            └──────────────────────┘
+```
+
+- **MCP Servers**: Lightweight, self-describing tool endpoints. Each server advertises its available tools, input schemas, and capabilities via a standard protocol.
+- **Runtime Discovery**: The agent queries connected MCP servers at startup (or dynamically) to learn what tools are available — no custom integration code per service.
+- **Security Boundary**: MCP servers handle their own authentication and data access, so the agent never needs raw database credentials.
+- **When to Use Static vs. Dynamic**:
+  - *Static Registry*: Small, stable tool sets where you control all integrations (e.g., early development, single-purpose agents).
+  - *Dynamic Discovery (MCP)*: Growing tool ecosystems, multi-tenant platforms, or when external teams provide tool servers independently.
+
 ### 5.4 Memory, Context & State Hydration
 
 **Short-Term History**: The conversation thread (system prompt + user query + assistant turns + tool results) maintained directly in the LLM context window.
@@ -441,6 +477,19 @@ If the process crashes or encounters a network partition, the agent rehydrates i
 **Declarative SOPs & Dynamic Injection**: Keep base prompts minimal and static (for caching). Store procedural runbooks as standalone markdown files (`sops/data_cleaning.md`, `sops/visualization.md`). A routing mechanism evaluates the user's intent and appends only the relevant SOP to the prompt at runtime.
 
 **Prompt-RAG for Enterprise Scale**: When SOPs number in the hundreds, keyword-based routing becomes unmaintainable. Replace with a **Prompt-RAG** system: embed all SOPs in a vector database and retrieve the top-K relevant procedures via semantic similarity search on the user query.
+
+**Long-Term Memory (Cross-Session Persistence)**: The mechanisms above (short-term history, checkpoints) all operate *within* a single session. Enterprise agents that interact with the same user or tenant repeatedly need memory that persists **across sessions**:
+
+| Memory Type | What It Stores | Example |
+| :--- | :--- | :--- |
+| **Episodic** | Records of past interactions and their outcomes | "Last time user asked about Q1 revenue, data source was `analytics.revenue_q1`." |
+| **Semantic** | Learned facts and domain knowledge about the user/tenant | "This user prefers dark-themed bar charts. Their primary KPI is MRR." |
+| **Procedural** | Learned operational preferences and workflows | "For this tenant, always filter by `region = APAC` before aggregation." |
+
+- **Storage**: Use a persistent store (SQLite, Postgres, Redis) keyed by `user_id` or `tenant_id`.
+- **Retrieval**: At session start, load relevant long-term memories and inject them into the system prompt as contextual priors.
+- **Update**: After each session, extract and persist new learnings (user corrections, preferences, domain facts).
+- **Decay & Relevance**: Implement recency weighting or explicit expiration to prevent stale memories from polluting future sessions.
 
 ### 5.5 Error Taxonomy & Escalation Ladder
 
@@ -571,6 +620,257 @@ Maintain a **Dual-Transcript Strategy** for debugging and trajectory analysis:
 ```
 
 **Recommended Instrumentation Libraries**: OpenTelemetry for general tracing; Arize Phoenix, Langfuse, or Braintrust for LLM-specific trajectory evaluation.
+
+### 5.8 Planning & Task Decomposition
+
+Before an agent starts executing tools, it should *plan*. Planning is a distinct cognitive step from reactive tool-calling. Without planning, agents wander — they try random tools, backtrack, and waste loops. Planning is what separates a competent agent from a brute-force tool-caller.
+
+**Planning Patterns**:
+
+```
+Pattern A: Plan-then-Execute (Structured)
+┌─────────────────────────────────────────────────────┐
+│ 1. LLM receives query                               │
+│ 2. LLM outputs a numbered step plan                 │
+│ 3. Agent executes each step sequentially             │
+│ 4. If a step fails, re-plan from that point          │
+└─────────────────────────────────────────────────────┘
+
+Pattern B: Dynamic Re-Planning (Adaptive)
+┌─────────────────────────────────────────────────────┐
+│ 1. LLM creates initial plan                          │
+│ 2. Execute Step 1 → Observe result                   │
+│ 3. LLM revises remaining plan based on observation   │
+│ 4. Repeat: execute → observe → re-plan               │
+└─────────────────────────────────────────────────────┘
+
+Pattern C: Pure ReAct (No Explicit Plan)
+┌─────────────────────────────────────────────────────┐
+│ 1. LLM reasons step-by-step without a written plan   │
+│ 2. Each turn decides the next action independently    │
+│ 3. Works for simple tasks; degrades on complex ones   │
+└─────────────────────────────────────────────────────┘
+```
+
+| Pattern | Best For | Tradeoff |
+| :--- | :--- | :--- |
+| **Plan-then-Execute** | Well-defined multi-step tasks (data pipelines, report generation) | Structured but brittle if intermediate results are unexpected |
+| **Dynamic Re-Planning** | Complex, exploratory tasks where the path is uncertain | Most robust but costs extra tokens for re-planning turns |
+| **Pure ReAct** | The default for frontier reasoning models on most tasks | Cheapest and most natural; implicit reasoning replaces explicit plans |
+
+> [!NOTE]
+> **Model Capability Determines Pattern Choice, Not Task Complexity Alone.**
+>
+> With modern frontier reasoning models (Claude Opus/Sonnet, Gemini 2.5 Pro, o1/o3), **Pattern C (Pure ReAct) should be the default** for most tasks — including reasonably complex ones. These models have strong internal chain-of-thought reasoning; forcing an explicit plan structure on them adds token overhead without proportional benefit (the "Token Tax" principle from §5.6).
+>
+> **Use Pattern A or B as fallbacks when:**
+> - The model is **weaker or smaller** (open-weight models, quantized local models) and genuinely struggles to maintain coherent multi-step reasoning without scaffolding.
+> - The task is **extremely long** (10+ steps) where even frontier models may lose track due to context window attention drift — explicit checklists provide state grounding (see [lessons_learned.md §4](file:///home/navin/work/AI/projects/Agents/docs/lessons_learned.md)).
+> - **Auditability is required** — an explicit plan provides a traceable artifact for debugging where the agent went wrong.
+> - **Multi-agent orchestration** — an orchestrator agent needs an explicit plan to decompose and delegate sub-tasks across worker agents (see §6).
+>
+> In short: trust the model's reasoning first. Add explicit planning scaffolding only when you have evidence the model needs it.
+
+**Implementation** (when explicit planning IS needed): The plan can be maintained as:
+- A structured JSON array in the conversation history (machine-readable).
+- A numbered checklist the agent updates via a `manage_checklist` tool (explicit grounding).
+- An internal chain-of-thought the agent writes before each action (implicit planning).
+
+### 5.9 Reflection & Self-Critique
+
+Reflection is the ability for an agent to **evaluate its own output before returning it** to the user. Without reflection, agents confidently return wrong or incomplete answers.
+
+**The Reflexion Pattern**:
+
+```
+┌──────────────────────────────────────────────┐
+│  1. Agent completes task → Candidate Answer   │
+│  2. Agent re-reads original question          │
+│  3. Agent critiques its own answer:           │
+│     - "Is this factually correct?"            │
+│     - "Did I address all parts of the query?" │
+│     - "Are the numbers consistent?"           │
+│  4. If critique finds issues → Re-execute     │
+│  5. If critique passes → Return final answer  │
+└──────────────────────────────────────────────┘
+```
+
+**Reflection Strategies**:
+
+| Strategy | Mechanism | Cost | Effectiveness |
+| :--- | :--- | :--- | :--- |
+| **Inner Critic** | Agent critiques its own response in a follow-up turn | Low (1 extra LLM call) | Good for catching obvious errors |
+| **Verify-then-Return** | Agent re-runs a verification tool (e.g., re-executes a query to double-check numbers) | Medium (1 tool call) | Excellent for data accuracy |
+| **Multi-Turn Refinement** | Generate → critique → refine → critique → finalize (bounded by max iterations) | High (2–4 extra calls) | Best quality but most expensive |
+| **LLM-as-Judge** | A separate evaluator model scores the output | Medium (1 call to judge model) | Good for diverse quality dimensions |
+
+**When to Use Reflection**:
+- Tasks where accuracy is critical (financial data, medical information).
+- Tasks where partial answers are common (multi-part questions).
+- Tasks where hallucination risk is high (knowledge-intensive queries).
+
+**When to Skip Reflection**:
+- Simple, low-stakes tasks (formatting, summarization).
+- Latency-critical applications where extra LLM calls are unacceptable.
+- When the agent's tools already provide verified outputs (e.g., SQL query results are inherently accurate if the query is correct).
+
+### 5.10 Input Processing & Intent Routing
+
+Before the ReAct loop begins, there is typically a **classification and routing layer** that determines how the incoming request should be handled. This is the agent's "front door" — getting routing wrong means either wasting resources on simple queries or under-serving complex ones.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      INPUT PROCESSING LAYER                      │
+│                                                                   │
+│  User Query                                                       │
+│      │                                                            │
+│      ▼                                                            │
+│  ┌──────────────────┐     ┌──────────────────────────────────┐   │
+│  │ Intent Classifier │────►│ Complexity Estimator              │   │
+│  │ (cheap model)     │     │ (single-call vs. agent needed?)   │   │
+│  └──────────────────┘     └───────────────┬──────────────────┘   │
+│                                           │                       │
+│              ┌────────────────────────────┼────────────────┐      │
+│              ▼                            ▼                ▼      │
+│     ┌──────────────┐            ┌──────────────┐  ┌────────────┐ │
+│     │ Single LLM   │            │ SOP/Skill    │  │ Full ReAct │ │
+│     │ Call (fast)   │            │ Router       │  │ Agent Loop │ │
+│     └──────────────┘            └──────────────┘  └────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Components**:
+
+1. **Intent Classifier**: Uses a cheap, fast model (Flash/Haiku) to categorize the user's request (e.g., "data query", "chart request", "general question", "multi-step analysis").
+
+2. **Complexity Estimator**: Determines whether the request requires:
+   - A single structured LLM call (simple extraction, classification).
+   - A specific skill/SOP invocation (known procedure).
+   - A full ReAct agent loop (open-ended exploration).
+
+3. **SOP/Skill Router**: Matches the classified intent to the appropriate Standard Operating Procedure or registered Skill, injecting only the relevant instructions into the prompt.
+
+**Why This Matters**: In enterprise systems, 40–60% of incoming queries may be simple lookups or single-step tasks. Routing them through a full agent loop wastes 10–50× the tokens compared to a single LLM call.
+
+### 5.11 Output Validation & Response Guardrails
+
+The agent's **final output** must pass through a validation gate before reaching the user. The guide's existing guardrails (§5.5, §5.6) focus on *input and loop safety*. This section covers *output safety* — the last line of defense.
+
+**Output Validation Pipeline**:
+
+```
+Agent Final Answer
+    │
+    ▼
+┌──────────────────────────────────┐
+│  1. Schema Validation            │  Does the output match the expected
+│     (JSON/Pydantic check)        │  structure and data types?
+├──────────────────────────────────┤
+│  2. PII & Secret Redaction       │  Scrub API keys, passwords, emails,
+│     (regex + NER patterns)       │  phone numbers from tool outputs.
+├──────────────────────────────────┤
+│  3. Factual Grounding Check      │  Are claims supported by actual tool
+│     (cross-ref with observations)│  observations in the conversation?
+├──────────────────────────────────┤
+│  4. Content Safety Filter        │  Block harmful, biased, or policy-
+│     (moderation API or rules)    │  violating content.
+├──────────────────────────────────┤
+│  5. Completeness Check           │  Did the agent address all parts of
+│     (compare against query)      │  the user's original question?
+└──────────────────────────────────┘
+    │
+    ▼
+  ✅ Validated Response → Return to User
+  ❌ Validation Failed → Re-prompt agent or return error with explanation
+```
+
+**PII Redaction Example Patterns**:
+- API keys: `sk-[a-zA-Z0-9]{32,}` → `[REDACTED_API_KEY]`
+- Email addresses: `[^@]+@[^@]+\.[^@]+` → `[REDACTED_EMAIL]`
+- Bearer tokens: `Bearer [a-zA-Z0-9._-]+` → `[REDACTED_TOKEN]`
+
+> [!WARNING]
+> Output validation is non-negotiable for enterprise agents. A single PII leak or hallucinated financial number in a customer-facing agent can cause regulatory, legal, and reputational damage.
+
+### 5.12 Conversation Management & User Interaction Strategy
+
+Real agents are not one-shot "query in → answer out" systems. They manage ongoing **multi-turn conversations** with users, requiring strategies for clarification, follow-ups, and corrections.
+
+**Interaction Patterns**:
+
+| Situation | Agent Behavior | Implementation |
+| :--- | :--- | :--- |
+| **Ambiguous query** | Ask for clarification before acting | Confidence threshold: if intent classifier confidence < 0.7, ask instead of guess |
+| **Underspecified parameters** | Request missing information | Check required tool inputs; if missing, prompt user |
+| **Follow-up question** | Connect to prior conversation context | Thread new query with existing message history |
+| **User correction** | Accept correction and adjust course | Acknowledge error, update plan, re-execute from correction point |
+| **Partial results** | Offer to continue or refine | "I found X so far. Would you like me to dig deeper into Y?" |
+
+**Clarification vs. Assumption Decision**:
+
+```
+User Query
+    │
+    ▼
+Is the query unambiguous? ──Yes──► Proceed to execution
+    │
+    No
+    │
+    ▼
+Can I make a reasonable      ──Yes──► State assumption explicitly,
+default assumption?                     then proceed
+    │
+    No
+    │
+    ▼
+Ask for clarification ◄──── "Could you clarify whether you mean X or Y?"
+```
+
+**Key Principle**: When in doubt, **state your assumption and proceed** rather than blocking with a question — unless the ambiguity could lead to irreversible actions (e.g., deleting data, sending emails). For irreversible actions, always confirm.
+
+### 5.13 Grounding & Knowledge Retrieval (RAG Integration)
+
+Enterprise agents must reason over **proprietary, domain-specific data** that is not in the LLM's training set. Without grounding, agents hallucinate domain facts.
+
+**Agentic RAG vs. Pipeline RAG**:
+
+```
+Pipeline RAG (Always Retrieve)           Agentic RAG (Agent Decides)
+┌────────────────────────────┐           ┌────────────────────────────┐
+│ 1. User query              │           │ 1. User query              │
+│ 2. ALWAYS retrieve from DB │           │ 2. Agent reasons: Do I     │
+│ 3. Stuff context + query   │           │    need external knowledge?│
+│ 4. LLM generates answer    │           │ 3. If yes → invoke         │
+│                            │           │    search_knowledge_base() │
+│ (Retrieves even when       │           │ 4. If no → answer from     │
+│  unnecessary)              │           │    existing context         │
+└────────────────────────────┘           └────────────────────────────┘
+```
+
+**Retrieval as a Tool**: Expose knowledge retrieval as a first-class tool the agent can invoke when needed:
+
+```python
+@tool(
+    name="search_knowledge_base",
+    description="Search the company knowledge base for relevant documents, "
+                "policies, or historical data. Use when the answer requires "
+                "company-specific information not available in the conversation.",
+    idempotent=True,
+)
+def search_knowledge_base(query: str, top_k: int = 5) -> ToolResult:
+    results = vector_store.similarity_search(query, k=top_k)
+    return ToolResult(
+        status="success",
+        data="\n\n".join([doc.page_content for doc in results]),
+        metadata={"sources": [doc.metadata["source"] for doc in results]}
+    )
+```
+
+**Grounding Verification**: After the agent produces an answer using retrieved context, verify that claims are actually supported by the retrieved documents — not fabricated by the LLM. This connects to the Output Validation layer (§5.11).
+
+**When to Use Agentic RAG vs. Pipeline RAG**:
+- *Agentic RAG*: When only some queries need external knowledge; saves cost by avoiding unnecessary retrievals.
+- *Pipeline RAG*: When virtually every query requires external context (e.g., customer support over a knowledge base).
 
 ---
 
@@ -974,3 +1274,64 @@ Our workspace implementation provides concrete examples of these architectural c
    - Industry patterns and reflective critique in [agentic_design_patterns.md](file:///home/navin/work/AI/projects/Agents/docs/agentic_design_patterns.md).
    - Operational lessons in [lessons_learned.md](file:///home/navin/work/AI/projects/Agents/docs/lessons_learned.md).
    - Development backlog in [backlog.md](file:///home/navin/work/AI/projects/Agents/docs/backlog.md).
+
+---
+
+## 13. Advanced Topics & Future Roadmap
+
+The following are cutting-edge or specialized capabilities that extend beyond core and production-grade agent architecture. They represent the frontier of agentic AI research and should be considered for long-term roadmap planning rather than initial implementation.
+
+### 13.1 Meta-Cognition & Confidence Estimation
+
+The agent's ability to reason about its own reasoning process — estimating how confident it is in an answer and adjusting behavior accordingly.
+
+- **Confidence Scoring**: After generating an answer, the agent assigns a confidence level (high / medium / low) based on the quality of evidence from tool observations.
+- **Adaptive Behavior**: Low confidence → seek more evidence (additional tool calls) or escalate to human review. High confidence → return answer directly.
+- **Calibration**: Track whether confidence scores correlate with actual correctness over time. Poorly calibrated confidence is worse than no confidence.
+- **Use Case**: High-stakes domains (medical, legal, financial) where knowing "I'm not sure" is as valuable as knowing the answer.
+
+### 13.2 Self-Improving Agents (Learning from Trajectories)
+
+Agents that get better over time by learning from their own past execution trajectories.
+
+- **Few-Shot Example Mining**: Identify successful past trajectories and use them as few-shot examples in future prompts for similar queries. The agent literally learns from its own history.
+- **Trajectory Fine-Tuning**: Collect high-quality agent trajectories (verified correct by humans or automated evaluation) and fine-tune the base model on them to improve domain-specific tool use and reasoning.
+- **Reinforcement Learning from Human Feedback (RLHF) on Trajectories**: Score complete agent runs (not just individual outputs) and use trajectory-level rewards to improve planning and tool selection.
+- **Challenge**: Requires robust evaluation infrastructure (§8) to distinguish good trajectories from bad ones. Without this, self-improvement can amplify errors.
+
+### 13.3 Agent-to-Agent Communication Standards
+
+Formal inter-agent communication protocols that go beyond the basic delegation schema described in §6.2.
+
+- **Shared Ontologies**: Agents agree on common data schemas and terminology so outputs from Agent A can be directly consumed by Agent B without translation.
+- **Negotiation Protocols**: Agents that can negotiate resource allocation, task priority, or conflicting recommendations (e.g., two analyst agents disagree on a metric).
+- **Standardized Message Envelopes**: Common headers (sender, receiver, correlation_id, priority, ttl) wrapping domain-specific payloads for heterogeneous multi-agent ecosystems.
+- **Relevance**: Becomes important when building platforms where different teams contribute independent agents that must interoperate.
+
+### 13.4 Formal Safety Verification
+
+Mathematical guarantees on agent behavior boundaries — proving that an agent *cannot* violate certain constraints under any possible input.
+
+- **Resource Bounding Proofs**: Formal verification that the agent cannot exceed N tool calls, M tokens, or T seconds regardless of LLM output.
+- **Access Control Proofs**: Verification that the agent's tool permissions are enforced at the infrastructure level (not just the prompt level) and cannot be bypassed through prompt injection.
+- **State Machine Verification**: For FSM/DAG agents, verify that all state transitions are valid and no unreachable or deadlocked states exist.
+- **Current Limitation**: Formal verification of LLM-based agents is an active research area with limited practical tooling. Most production systems rely on empirical testing (§8) and runtime guardrails (§5.5) instead.
+
+### 13.5 Agent Marketplaces & Plugin Ecosystems
+
+Standardized packaging, distribution, and discovery of agent skills and plugins.
+
+- **Skill Packaging Standard**: Define a universal skill package format (similar to npm packages or VS Code extensions) with manifest, code, tests, and documentation.
+- **Discovery & Installation**: Agents or platform operators can browse, install, and configure skills from a registry.
+- **Trust & Reputation**: Skill packages carry trust scores based on author verification, usage statistics, and automated safety audits.
+- **Versioning & Compatibility**: Semantic versioning for skills with dependency management and backward compatibility guarantees.
+- **Analogy**: Think of OpenAI's GPT Store, but for modular agent capabilities that can be composed into custom agent configurations.
+
+### 13.6 Federated & Cross-Organization Agents
+
+Agents that operate across organizational boundaries with different trust levels, data governance policies, and compliance requirements.
+
+- **Cross-Tenant Data Isolation**: Agent can query data from Organization A and Organization B without either party seeing the other's raw data. Only aggregated or approved results cross boundaries.
+- **Federated Execution**: Sub-tasks are delegated to agents running within each organization's infrastructure. Results are aggregated by a neutral orchestrator.
+- **Compliance-Aware Routing**: The orchestrator understands data residency requirements (e.g., EU data must be processed within EU) and routes sub-tasks accordingly.
+- **Use Cases**: Supply chain optimization (multi-vendor), consortium analytics (multi-bank), cross-departmental enterprise workflows.
