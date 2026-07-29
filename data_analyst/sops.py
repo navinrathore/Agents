@@ -3,9 +3,9 @@ import os
 class SOPRouter:
     def __init__(self, sops_dir=None):
         if sops_dir is None:
-            # Resolve sops/ directory relative to agent/sops.py
+            # Resolve sops/ directory relative to data_analyst/sops.py
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            sops_dir = os.path.join(current_dir, "..", "sops")
+            sops_dir = os.path.join(current_dir, "sops")
         self.sops_dir = os.path.abspath(sops_dir)
 
     def route(self, question: str) -> tuple:

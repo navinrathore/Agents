@@ -2,7 +2,7 @@ def get_anthropic_tools(use_checklist: bool = False) -> list[dict]:
     """
     Returns the tool schemas available to the agent in Anthropic format.
     """
-    return [
+    tools = [
         {
             "name": "execute_python",
             "description": "Execute Python code in a sandboxed environment. Pre-imports pandas as pd and matplotlib.pyplot as plt. Output charts are automatically saved.",
@@ -46,7 +46,7 @@ def get_openai_tools(use_checklist: bool = False) -> list[dict]:
     """
     Returns the tool schemas available to the agent in OpenAI format (used by Hugging Face Inference).
     """
-    return [
+    tools = [
         {
             "type": "function",
             "function": {

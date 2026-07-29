@@ -1,6 +1,5 @@
 import os
 import json
-from .tools import get_anthropic_tools, get_openai_tools
 
 class BaseLLMClient:
     def __init__(self, model: str, use_checklist: bool = False, pruning_config: dict = None):
@@ -57,7 +56,7 @@ class BaseLLMClient:
     def add_tool_result(self, tool_call_id: str, name: str, result: str):
         raise NotImplementedError
 
-    def generate_response(self) -> dict:
+    def generate_response(self, tools: list = None) -> dict:
         raise NotImplementedError
 
 class AnthropicClient(BaseLLMClient):
@@ -103,15 +102,18 @@ class AnthropicClient(BaseLLMClient):
         )
         return response.content[0].text
 
-    def generate_response(self) -> dict:
+    def generate_response(self, tools: list = None) -> dict:
         self.prune_context()
-        response = self.client.messages.create(
-            model=self.model,
-            system=self.system_prompt,
-            messages=self.messages,
-            tools=get_anthropic_tools(self.use_checklist),
-            max_tokens=2000
-        )
+        kwargs = {
+            "model": self.model,
+            "system": self.system_prompt,
+            "messages": self.messages,
+            "max_tokens": 2000
+        }
+        if tools:
+            kwargs["tools"] = tools
+            
+        response = self.client.messages.create(**kwargs)
         text = ""
         tool_calls = []
         for block in response.content:
@@ -171,18 +173,21 @@ class HuggingFaceClient(BaseLLMClient):
         )
         return response.choices[0].message.content or ""
 
-    def generate_response(self) -> dict:
+    def generate_response(self, tools: list = None) -> dict:
         self.prune_context()
         hf_messages = [{"role": "system", "content": self.system_prompt}] + self.messages
         actual_model = "Qwen/Qwen2.5-72B-Instruct" if self.model.startswith("claude-") else self.model
         print(f"(Using Model: {actual_model})")
         
-        response = self.client.chat.completions.create(
-            model=actual_model,
-            messages=hf_messages,
-            tools=get_openai_tools(self.use_checklist),
-            max_tokens=2000
-        )
+        kwargs = {
+            "model": actual_model,
+            "messages": hf_messages,
+            "max_tokens": 2000
+        }
+        if tools:
+            kwargs["tools"] = tools
+
+        response = self.client.chat.completions.create(**kwargs)
         message = response.choices[0].message
         text = message.content or ""
         tool_calls = []

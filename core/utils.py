@@ -52,4 +52,3 @@ class RepetitionDetector:
         """Resets the tracker."""
         self.count = 0
         self.last_item = None
-

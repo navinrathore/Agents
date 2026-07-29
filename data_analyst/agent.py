@@ -1,13 +1,16 @@
+import os
 import textwrap
+from core.llm_clients import get_llm_client
+from core.utils import ExecutionTimer, RepetitionDetector
 from .executor import PythonExecutor
-from .llm_clients import get_llm_client
-from .utils import ExecutionTimer, RepetitionDetector
 from .sops import SOPRouter
+from .tools import get_anthropic_tools, get_openai_tools
 
 class DataAnalystAgent:
-    def __init__(self, config: dict, output_dir: str = "outputs"):
+    def __init__(self, config: dict, output_dir: str = None):
         self.config = config
-        self.output_dir = output_dir
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.output_dir = output_dir or os.path.join(base_dir, "outputs")
         self.executor = PythonExecutor(output_dir=self.output_dir)
         self.use_checklist = self.config.get('use_checklist', False)
         self.llm = get_llm_client(
@@ -57,6 +60,10 @@ class DataAnalystAgent:
         error_detector = RepetitionDetector(threshold=3)
         break_agent_loop = False
         
+        # Prepare tools schema based on active LLM provider
+        is_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
+        tools = get_anthropic_tools(self.use_checklist) if is_anthropic else get_openai_tools(self.use_checklist)
+
         with ExecutionTimer(name="Total Agent Run", verbose=verbose):
             while loop_count < max_loops and not break_agent_loop:
                 loop_count += 1
@@ -67,7 +74,7 @@ class DataAnalystAgent:
                     # Update system prompt with the latest checklist state
                     self.llm.set_system_prompt(self._get_dynamic_system_prompt())
                     
-                    response = self.llm.generate_response()
+                    response = self.llm.generate_response(tools=tools)
                     text = response.get("text", "")
                     tool_calls = response.get("tool_calls", [])
                     
