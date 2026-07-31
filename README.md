@@ -47,7 +47,8 @@ projects/Agents/
     ├── AGENTS_rules_backup.md
     ├── agentic_design_patterns.md
     ├── backlog.md
-    └── lessons_learned.md
+    ├── lessons_learned.md
+    └── skills_architecture.md
 ```
 
 ## Core Framework Design

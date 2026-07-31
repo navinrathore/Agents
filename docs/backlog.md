@@ -25,8 +25,22 @@ The following items represent architectural improvements for the autonomous agen
 - [ ] **ExponentialBackoffRetry**: Reusable retry decorator/context manager with jitter for LLM API calls to gracefully handle rate limits (`429`), network glitches, and transient timeouts.
 
 ### Group 4: Structured Output Parsing
-- [ ] **JsonExtractor & SchemaValidator**: Extract embedded JSON objects from raw LLM text outputs and validate structure against Pydantic models or JSON schemas when function calling APIs are unavailable.
+- [x] **JsonExtractor & SchemaValidator**: Extract embedded JSON objects from raw LLM text outputs and validate structure against Pydantic models (or raw dictionary key/type schemas when Pydantic models are not present).
 
 ### Group 5: Observability, Telemetry & Security
 - [ ] **PIIRedactor & SecretSanitizer**: Redact sensitive data (API keys, passwords, bearer tokens, PII) from agent inputs, tool outputs, and execution logs.
 - [ ] **TrajectoryLogger**: Dual-transcript logging helper (`transcript.jsonl` with truncated parameters and `transcript_full.jsonl` with complete raw payloads) for daily debugging and trajectory evaluation.
+
+### Group 6: Modular Skill Registry & Plugin Architecture
+- [ ] **SkillRegistry & SkillManager (`core/skills.py`)**: Implement framework-level automatic discovery of `SKILL.md` YAML frontmatter metadata, dynamic prompt loading, and tool schema registration.
+- [ ] **Declarative Skill Package Specification**: Standardize user-defined skill package directory layouts (`SKILL.md`, `tools.py`, `templates/`, `resources/`) across agents.
+- [ ] **Sub-Agent Skill Execution Engine**: Support spawning isolated child ReAct agent loops for complex sub-agent skill execution.
+
+### Group 7: Documentation & Structure
+- [ ] **Multi-Page Guide Refactoring**: Split `building_agents_master_guide.md` (1,340+ lines) into a modular `docs/master_guide/` folder structure (`01_foundations.md`, `02_config.md`, `03_architectural_facets.md`, `04_multi_agent.md`, `05_evaluation_ops.md`, `06_advanced_topics.md`) for improved readability and maintenance.
+
+### Group 8: Critique-Sourced Improvements (from LLM-as-Judge Review)
+- [ ] **Cost Estimation Worksheet**: Add a practical worksheet to the design checklist doc calculating expected per-session cost: `(input_tokens × $/token + output_tokens × $/token) × avg_loops × sessions_per_day`. Include reference costs for Claude Sonnet, Gemini Flash, GPT-4o, and Qwen open-weight.
+- [ ] **Prompt Regression Testing Template**: Add a golden trajectory test template to the templates doc with example test cases (input query, expected tool call sequence, expected output assertions) and a `pytest` harness for automated prompt regression CI.
+
+

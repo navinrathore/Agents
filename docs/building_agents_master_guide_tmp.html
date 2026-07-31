@@ -1,0 +1,2014 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>building_agents_master_guide.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="%F0%9F%93%98-building-autonomous-ai-agents-architecture-parameterization-and-implementation-master-guide">📘 Building Autonomous AI Agents: Architecture, Parameterization, and Implementation Master Guide</h1>
+<blockquote>
+<p><strong>Enterprise Blueprint</strong> for designing, parameterizing, and implementing autonomous AI agents — from minimal prototypes to production-grade, multi-agent systems.</p>
+</blockquote>
+<hr>
+<h2 id="%F0%9F%8F%97%EF%B8%8F-1-foundations-what-is-an-agent--when-not-to-use-one">🏗️ 1. Foundations: What is an Agent &amp; When (Not) to Use One</h2>
+<h3 id="%F0%9F%8E%AF-11-definition">🎯 1.1 Definition</h3>
+<p>An <strong>AI Agent</strong> is an autonomous system that uses a <strong>Cognitive Engine (LLM)</strong> to perceive environment state, reason about goals, execute tools/actions, observe results, and iterate dynamically until an objective is achieved.</p>
+<pre class="hljs"><code><div>       ┌─────────────────────────────────────────────────────────┐
+       │                 User Goal / Environment                 │
+       └──────────────────────────┬──────────────────────────────┘
+                                  │
+                                  ▼
+┌───────────────────────────────────────────────────────────────────────┐
+│                           AGENT CONTROL LOOP                          │
+│                                                                       │
+│  ┌────────────────────┐   Prompt    ┌──────────────────────────────┐  │
+│  │   Context Engine   ├────────────►│       Cognitive Brain        │  │
+│  │ (Memory, SOP, State│             │ (LLM + Tool Manifests)       │  │
+│  └─────────▲──────────┘             └──────────────┬───────────────┘  │
+│            │                                       │ Tool Call        │
+│            │ Observation                           ▼                  │
+│  ┌─────────┴──────────┐             ┌──────────────────────────────┐  │
+│  │ Guardrails &amp; State ├─────────────┤    Tool Execution Sandbox    │  │
+│  │    Checkpoints     │◄────────────┤ (Python, DB, Terminal, APIs) │  │
+│  └────────────────────┘ Output/Err  └──────────────────────────────┘  │
+└───────────────────────────────────────────────────────────────────────┘
+</div></code></pre>
+<h3 id="%F0%9F%9A%A6-12-when-to-use-an-agent-vs-simpler-alternatives">🚦 1.2 When to Use an Agent vs. Simpler Alternatives</h3>
+<p>Not every LLM feature requires an agent loop. Over-engineering with agents when a simpler solution suffices wastes API budget, adds multi-turn latency, and expands the failure surface.</p>
+<p><strong>Decision Matrix: Input Complexity × Output Determinism</strong></p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Input / Task Scope</th>
+<th style="text-align:left"><strong>Deterministic Output</strong></th>
+<th style="text-align:left"><strong>Open-Ended Output</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Single-Step Input</strong></td>
+<td style="text-align:left">❌ <strong>Single LLM Call</strong> <em>(classification, extraction)</em></td>
+<td style="text-align:left">❌ <strong>Single LLM Call</strong> <em>(structured JSON output)</em></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Multi-Step Input</strong> <em>(tool execution)</em></td>
+<td style="text-align:left">✅ <strong>FSM / DAG Agent</strong> <em>(deterministic pipeline)</em></td>
+<td style="text-align:left">✅ <strong>ReAct Agent</strong> <em>(exploratory reasoning)</em></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Multi-Domain Scope</strong></td>
+<td style="text-align:left">✅ <strong>Multi-Agent System</strong> <em>(specialized workers)</em></td>
+<td style="text-align:left">✅ <strong>Multi-Agent System</strong> <em>(planner + workers)</em></td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!TIP]
+<strong>Use an Agent when</strong>:</p>
+<ul>
+<li>The task requires <strong>iterative, multi-step reasoning</strong>.</li>
+<li>The model must dynamically <strong>select and execute from multiple tools</strong>.</li>
+<li>The complete execution path <strong>cannot be pre-determined</strong>.</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>[!WARNING]
+<strong>Don't use an Agent when</strong>:</p>
+<ul>
+<li>The task is a single classification, extraction, or transformation — use a <strong>single structured LLM call</strong>.</li>
+<li>The workflow sequence is 100% deterministic and pre-known — use a <strong>standard code pipeline</strong>.</li>
+<li>Latency requirements are <strong>sub-second</strong> — agent loops introduce multi-turn latency.</li>
+</ul>
+</blockquote>
+<hr>
+<h2 id="%F0%9F%93%90-2-architecture-spectrum-react-vs-fsm-vs-multi-agent">📐 2. Architecture Spectrum: ReAct vs. FSM vs. Multi-Agent</h2>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart LR
+    A["Agent Design Patterns"] --> B["ReAct Loop"]
+    A --> C["FSM / DAG Workflows"]
+    A --> D["Multi-Agent Orchestration"]
+
+    B --> B1["Open-ended Exploration\n(Data Analysis, Coding)"]
+    C --> C1["Deterministic Pipelines\n(Document Extraction, Billing)"]
+    D --> D1["Complex Specialization\n(Planner + Worker + Evaluator)"]
+</div></code></pre>
+<h3 id="%F0%9F%94%84-21-react-reasoning-and-acting">🔄 2.1 ReAct (Reasoning and Acting)</h3>
+<ul>
+<li><strong>Mechanism</strong>: An iterative <code>while</code> loop where the LLM produces thoughts and tool invocations, receives execution feedback (<em>observations</em>), and updates its plan dynamically.</li>
+<li><strong>Best For</strong>: Exploratory data analysis, software debugging, complex multi-step reasoning.</li>
+<li><strong>Tradeoff</strong>: Maximum flexibility, but highest risk of runaway loops and token burn.</li>
+</ul>
+<h3 id="%E2%9A%99%EF%B8%8F-22-finite-state-machines-fsms--directed-acyclic-graphs-dags">⚙️ 2.2 Finite State Machines (FSMs) &amp; Directed Acyclic Graphs (DAGs)</h3>
+<ul>
+<li><strong>Mechanism</strong>: Control flow is hardcoded into graph nodes (<em>LangGraph / AutoGen</em>). The developer designs the graph; the LLM evaluates specific node transitions or extracts structured outputs.</li>
+<li><strong>Best For</strong>: Highly regulated, deterministic business processes (<em>e.g., invoice processing, KYC validation</em>).</li>
+<li><strong>Tradeoff</strong>: Highly predictable, but brittle to unhandled edge cases.</li>
+</ul>
+<h3 id="%F0%9F%8C%90-23-multi-agent-orchestration">🌐 2.3 Multi-Agent Orchestration</h3>
+<ul>
+<li><strong>Mechanism</strong>: Specialized agents (<em>e.g., Planner, Coder, Reviewer</em>) delegate sub-tasks to one another via structured message passing. Each agent maintains its own context window, prompt, and tool set.</li>
+<li><strong>Best For</strong>: Large-scope tasks where context window isolation prevents context bloat and specialization improves output quality.</li>
+<li><strong>Tradeoff</strong>: High capability, but introduces coordination overhead and failure propagation complexity.</li>
+</ul>
+<blockquote>
+<p>[!NOTE]
+These patterns are not mutually exclusive. Enterprise systems frequently combine them: a <strong>DAG orchestrator</strong> routes to specialized <strong>ReAct sub-agents</strong>, each running in isolated context windows with dedicated tool sets.</p>
+</blockquote>
+<hr>
+<h2 id="%E2%9A%A1-3-the-simplest-agent-architecture-minimal-blueprint">⚡ 3. The Simplest Agent Architecture (Minimal Blueprint)</h2>
+<p>The simplest viable agent is a <strong>Single-Loop ReAct Agent</strong> written in pure Python. It requires zero complex frameworks and relies on four clean primitives:</p>
+<ol>
+<li><strong>System Prompt</strong>: Defines persona and tool usage guidelines.</li>
+<li><strong>LLM Client Abstraction</strong>: Sends messages and tool schemas to the model API.</li>
+<li><strong>Bounded <code>while</code> Loop</strong>: Controls iteration with a mandatory <code>max_loops</code> safety threshold.</li>
+<li><strong>Tool Dispatcher</strong>: Maps tool calls to executable Python functions.</li>
+</ol>
+<h3 id="31-production-grade-minimal-implementation">3.1 Production-Grade Minimal Implementation</h3>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> json
+<span class="hljs-keyword">import</span> logging
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> Dict, Any, List, Callable
+
+logger = logging.getLogger(__name__)
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">MinimalAgent</span>:</span>
+    <span class="hljs-string">"""
+    A minimal, self-contained ReAct agent with explicit loop safety
+    and provider-agnostic tool execution.
+    """</span>
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">__init__</span><span class="hljs-params">(
+        self,
+        llm_client: Any,
+        tools: Dict[str, Callable],
+        system_prompt: str,
+        max_loops: int = <span class="hljs-number">10</span>
+    )</span>:</span>
+        self.client = llm_client
+        self.tools = tools
+        self.system_prompt = system_prompt
+        self.max_loops = max_loops
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">run</span><span class="hljs-params">(self, user_query: str)</span> -&gt; str:</span>
+        <span class="hljs-comment"># Initialize conversation state with cached static prompt prefix</span>
+        messages = [
+            {<span class="hljs-string">"role"</span>: <span class="hljs-string">"system"</span>, <span class="hljs-string">"content"</span>: self.system_prompt},
+            {<span class="hljs-string">"role"</span>: <span class="hljs-string">"user"</span>, <span class="hljs-string">"content"</span>: user_query}
+        ]
+
+        <span class="hljs-keyword">for</span> loop_idx <span class="hljs-keyword">in</span> range(<span class="hljs-number">1</span>, self.max_loops + <span class="hljs-number">1</span>):
+            logger.info(<span class="hljs-string">f"[Loop <span class="hljs-subst">{loop_idx}</span>/<span class="hljs-subst">{self.max_loops}</span>] Calling LLM..."</span>)
+            
+            <span class="hljs-comment"># 1. Reason: Request model output with tool schemas</span>
+            response = self.client.generate(messages=messages, tools=self.get_tool_schemas())
+
+            <span class="hljs-comment"># 2. Check for Final Answer</span>
+            <span class="hljs-keyword">if</span> response.final_answer:
+                logger.info(<span class="hljs-string">f"[Completed] Final answer on step <span class="hljs-subst">{loop_idx}</span>."</span>)
+                <span class="hljs-keyword">return</span> response.final_answer
+
+            <span class="hljs-comment"># 3. Handle potentially multiple parallel tool calls</span>
+            <span class="hljs-keyword">for</span> tool_call <span class="hljs-keyword">in</span> response.tool_calls:
+                tool_name = tool_call.name
+                tool_args = tool_call.arguments
+                logger.info(<span class="hljs-string">f"[Action] Tool: <span class="hljs-subst">{tool_name}</span>(<span class="hljs-subst">{json.dumps(tool_args)}</span>)"</span>)
+
+                <span class="hljs-comment"># 4. Act: Execute Tool Safely</span>
+                <span class="hljs-keyword">if</span> tool_name <span class="hljs-keyword">in</span> self.tools:
+                    <span class="hljs-keyword">try</span>:
+                        observation = self.tools[tool_name](**tool_args)
+                        status = <span class="hljs-string">"SUCCESS"</span>
+                    <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+                        observation = <span class="hljs-string">f"Tool Execution Error: <span class="hljs-subst">{str(e)}</span>"</span>
+                        status = <span class="hljs-string">"ERROR"</span>
+                <span class="hljs-keyword">else</span>:
+                    observation = <span class="hljs-string">f"Error: Tool '<span class="hljs-subst">{tool_name}</span>' is not registered."</span>
+                    status = <span class="hljs-string">"NOT_FOUND"</span>
+
+                <span class="hljs-comment"># 5. Observe: Append turn state to history</span>
+                messages.append({
+                    <span class="hljs-string">"role"</span>: <span class="hljs-string">"assistant"</span>,
+                    <span class="hljs-string">"tool_calls"</span>: [{<span class="hljs-string">"id"</span>: tool_call.id, <span class="hljs-string">"name"</span>: tool_name, <span class="hljs-string">"arguments"</span>: tool_args}]
+                })
+                messages.append({
+                    <span class="hljs-string">"role"</span>: <span class="hljs-string">"tool"</span>,
+                    <span class="hljs-string">"tool_call_id"</span>: tool_call.id,
+                    <span class="hljs-string">"content"</span>: str(observation)
+                })
+
+        <span class="hljs-keyword">return</span> <span class="hljs-string">f"Agent stopped: Exceeded safety threshold of <span class="hljs-subst">{self.max_loops}</span> loops."</span>
+
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">get_tool_schemas</span><span class="hljs-params">(self)</span> -&gt; List[Dict[str, Any]]:</span>
+        <span class="hljs-keyword">return</span> [fn._json_schema <span class="hljs-keyword">for</span> fn <span class="hljs-keyword">in</span> self.tools.values() <span class="hljs-keyword">if</span> hasattr(fn, <span class="hljs-string">"_json_schema"</span>)]
+</div></code></pre>
+<blockquote>
+<p>[!IMPORTANT]
+<strong>ReAct Loop Safety Rule</strong>: Never run an unbounded autonomous <code>while True:</code> loop. Always specify an explicit <code>max_loops</code> threshold (e.g., 10–15 steps) to prevent catastrophic token burn during hallucination or tool failure loops.</p>
+</blockquote>
+<h3 id="32-production-hardening-checklist">3.2 Production Hardening Checklist</h3>
+<p>The minimal agent above is pedagogically clean but has gaps that will bite in production. Before deploying, ensure you address each of these:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Concern</th>
+<th style="text-align:left">Problem in Minimal Code</th>
+<th style="text-align:left">Production Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Parallel tool calls</strong></td>
+<td style="text-align:left">Many LLMs emit multiple tool calls per turn</td>
+<td style="text-align:left">Handle <code>response.tool_calls</code> as a list (shown above)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Token counting</strong></td>
+<td style="text-align:left">Messages list grows unbounded within <code>max_loops</code></td>
+<td style="text-align:left">Add token estimation; trigger context pruning (see §5.4)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>LLM API retries</strong></td>
+<td style="text-align:left"><code>client.generate()</code> can throw network errors</td>
+<td style="text-align:left">Wrap in exponential backoff with jitter (see §5.2)</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Structured logging</strong></td>
+<td style="text-align:left"><code>print()</code> is not production-grade</td>
+<td style="text-align:left">Use <code>structlog</code> or <code>logging</code> with JSON output</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Tool execution timeout</strong></td>
+<td style="text-align:left">Tool execution has no timeout guard</td>
+<td style="text-align:left">Wrap in <code>concurrent.futures.ThreadPoolExecutor</code> with timeout</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Output truncation</strong></td>
+<td style="text-align:left">Tool outputs can be massive (e.g., full DB dump)</td>
+<td style="text-align:left">Truncate STDOUT/STDERR to configurable char limit, preserving head+tail</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Checkpoint persistence</strong></td>
+<td style="text-align:left">Crash loses all progress</td>
+<td style="text-align:left">Serialize state after each turn (see §5.4)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="%E2%9A%99%EF%B8%8F-4-parameterization--declarative-configuration">⚙️ 4. Parameterization &amp; Declarative Configuration</h2>
+<p>To keep agent code modular, maintainable, and configurable across dev, staging, and production, decouple execution logic from agent metadata using a declarative YAML/JSON configuration spec.</p>
+<h3 id="%F0%9F%93%8A-41-parameterization-matrix">📊 4.1 Parameterization Matrix</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Category</th>
+<th style="text-align:left">Parameter Key</th>
+<th style="text-align:left">Example Values</th>
+<th style="text-align:left">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Model Specification</strong></td>
+<td style="text-align:left"><code>provider</code></td>
+<td style="text-align:left"><code>anthropic</code>, <code>openai</code>, <code>huggingface</code></td>
+<td style="text-align:left">Provider agnosticism; swap LLM vendors seamlessly.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>model_name</code></td>
+<td style="text-align:left"><code>claude-3-5-sonnet</code>, <code>qwen2.5-72b</code></td>
+<td style="text-align:left">Cost vs. intelligence tuning.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>temperature</code></td>
+<td style="text-align:left"><code>0.0</code> to <code>0.7</code></td>
+<td style="text-align:left">Output determinism and creativity.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>max_tokens</code></td>
+<td style="text-align:left"><code>4096</code></td>
+<td style="text-align:left">Single-turn token output cap.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Control Guardrails</strong></td>
+<td style="text-align:left"><code>max_loops</code></td>
+<td style="text-align:left"><code>10</code> – <code>15</code></td>
+<td style="text-align:left">Hard limit on ReAct loop turns.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>execution_timeout</code></td>
+<td style="text-align:left"><code>30</code> (seconds)</td>
+<td style="text-align:left">Subprocess / API execution timeout.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>hitl_threshold</code></td>
+<td style="text-align:left"><code>3</code> (consecutive failures)</td>
+<td style="text-align:left">Trigger Human-in-the-Loop after N failures.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>use_checklist</code></td>
+<td style="text-align:left"><code>true</code> / <code>false</code></td>
+<td style="text-align:left">Toggle state guardrails dynamically.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Retry &amp; Resilience</strong></td>
+<td style="text-align:left"><code>retry_max_attempts</code></td>
+<td style="text-align:left"><code>3</code></td>
+<td style="text-align:left">Max retries for transient LLM API errors.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>retry_base_delay_sec</code></td>
+<td style="text-align:left"><code>1.0</code></td>
+<td style="text-align:left">Base delay for exponential backoff.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>circuit_breaker_threshold</code></td>
+<td style="text-align:left"><code>5</code></td>
+<td style="text-align:left">Failures before switching to fallback provider.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Behavior &amp; Prompts</strong></td>
+<td style="text-align:left"><code>base_prompt_path</code></td>
+<td style="text-align:left"><code>prompts/system_base.md</code></td>
+<td style="text-align:left">External prompt file for version control.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>sop_directory</code></td>
+<td style="text-align:left"><code>sops/</code></td>
+<td style="text-align:left">Declarative Standard Operating Procedures location.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Tool Registry &amp; Sandbox</strong></td>
+<td style="text-align:left"><code>sandbox_type</code></td>
+<td style="text-align:left"><code>subprocess</code>, <code>docker</code>, <code>e2b</code></td>
+<td style="text-align:left">Isolation level based on deployment trust.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>enabled_tools</code></td>
+<td style="text-align:left"><code>[&quot;execute_python&quot;, &quot;sql_query&quot;]</code></td>
+<td style="text-align:left">Dynamic feature flagging per agent role.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>tool_output_max_chars</code></td>
+<td style="text-align:left"><code>10000</code></td>
+<td style="text-align:left">Truncation limit for tool outputs.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Memory &amp; Resiliency</strong></td>
+<td style="text-align:left"><code>context_pruning_limit</code></td>
+<td style="text-align:left"><code>100000</code> (tokens)</td>
+<td style="text-align:left">Threshold to trigger context summarization.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>persistence_backend</code></td>
+<td style="text-align:left"><code>sqlite</code>, <code>jsonl</code>, <code>redis</code></td>
+<td style="text-align:left">Session state storage for crash recovery.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Cost Governance</strong></td>
+<td style="text-align:left"><code>session_token_budget</code></td>
+<td style="text-align:left"><code>500000</code></td>
+<td style="text-align:left">Hard cap on total tokens per session.</td>
+</tr>
+<tr>
+<td style="text-align:left"></td>
+<td style="text-align:left"><code>model_tier_routing</code></td>
+<td style="text-align:left"><code>{classify: &quot;flash&quot;, reason: &quot;opus&quot;}</code></td>
+<td style="text-align:left">Route cheap tasks to fast models.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%F0%9F%93%9C-42-complete-declarative-specification-schema-specyaml">📜 4.2 Complete Declarative Specification Schema (<code>spec.yaml</code>)</h3>
+<pre class="hljs"><code><div><span class="hljs-attr">agent:</span>
+  <span class="hljs-attr">name:</span> <span class="hljs-string">"data_analyst"</span>
+  <span class="hljs-attr">version:</span> <span class="hljs-string">"1.0.0"</span>
+  <span class="hljs-attr">description:</span> <span class="hljs-string">"Autonomous data analysis and visual chart generation agent"</span>
+
+<span class="hljs-attr">model:</span>
+  <span class="hljs-attr">provider:</span> <span class="hljs-string">"anthropic"</span>
+  <span class="hljs-attr">fallback_provider:</span> <span class="hljs-string">"huggingface"</span>
+  <span class="hljs-attr">model_name:</span> <span class="hljs-string">"claude-3-5-sonnet-20241022"</span>
+  <span class="hljs-attr">fallback_model:</span> <span class="hljs-string">"Qwen/Qwen2.5-72B-Instruct"</span>
+  <span class="hljs-attr">temperature:</span> <span class="hljs-number">0.0</span>
+  <span class="hljs-attr">max_tokens:</span> <span class="hljs-number">4096</span>
+
+<span class="hljs-attr">guardrails:</span>
+  <span class="hljs-attr">max_loops:</span> <span class="hljs-number">15</span>
+  <span class="hljs-attr">execution_timeout_seconds:</span> <span class="hljs-number">30</span>
+  <span class="hljs-attr">hitl_on_consecutive_errors:</span> <span class="hljs-number">3</span>
+  <span class="hljs-attr">use_checklist:</span> <span class="hljs-literal">false</span>
+
+<span class="hljs-attr">retry:</span>
+  <span class="hljs-attr">max_attempts:</span> <span class="hljs-number">3</span>
+  <span class="hljs-attr">base_delay_seconds:</span> <span class="hljs-number">1.0</span>
+  <span class="hljs-attr">max_delay_seconds:</span> <span class="hljs-number">30.0</span>
+  <span class="hljs-attr">circuit_breaker_failure_threshold:</span> <span class="hljs-number">5</span>
+
+<span class="hljs-attr">paths:</span>
+  <span class="hljs-attr">base_prompt:</span> <span class="hljs-string">"data_analyst/prompts/base_system.md"</span>
+  <span class="hljs-attr">sop_dir:</span> <span class="hljs-string">"data_analyst/sops/"</span>
+  <span class="hljs-attr">output_dir:</span> <span class="hljs-string">"data_analyst/outputs/"</span>
+
+<span class="hljs-attr">execution:</span>
+  <span class="hljs-attr">sandbox:</span> <span class="hljs-string">"docker"</span>
+  <span class="hljs-attr">enabled_tools:</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">"execute_python"</span>
+      <span class="hljs-attr">idempotent:</span> <span class="hljs-literal">true</span>
+      <span class="hljs-attr">timeout_seconds:</span> <span class="hljs-number">30</span>
+    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">"send_notification"</span>
+      <span class="hljs-attr">idempotent:</span> <span class="hljs-literal">false</span>
+      <span class="hljs-attr">timeout_seconds:</span> <span class="hljs-number">10</span>
+  <span class="hljs-attr">tool_output_max_chars:</span> <span class="hljs-number">10000</span>
+
+<span class="hljs-attr">memory:</span>
+  <span class="hljs-attr">context_prune_threshold_tokens:</span> <span class="hljs-number">100000</span>
+  <span class="hljs-attr">checkpoint_enabled:</span> <span class="hljs-literal">true</span>
+  <span class="hljs-attr">checkpoint_backend:</span> <span class="hljs-string">"jsonl"</span>
+
+<span class="hljs-attr">cost:</span>
+  <span class="hljs-attr">session_token_budget:</span> <span class="hljs-number">500000</span>
+  <span class="hljs-attr">alert_at_percent:</span> <span class="hljs-number">80</span>
+</div></code></pre>
+<hr>
+<h2 id="%F0%9F%94%AC-5-deep-dive-architectural-facets">🔬 5. Deep Dive: Architectural Facets</h2>
+<pre class="hljs"><code><div>┌──────────────────────────────────────────────────────────────────────────────┐
+│                          5.7 Observability &amp; Tracing                         │
+│          (Dual Transcripts: transcript.jsonl / transcript_full.jsonl)        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.10 Input Processing     │  5.8 Planning &amp; Task Decomposition             │
+│    - Intent Classifier     │    - Plan-then-Execute / Dynamic Re-Planning   │
+│    - Complexity Estimator  │    - Checklist Grounding                       │
+│    - SOP/Skill Router      │                                                │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│  5.1 Cognitive Brain       │  5.2 Control &amp; Orchestration                    │
+│    - BaseLLMClient         │    - ReAct Loop Engine                          │
+│    - Prompt Caching        │    - Retry &amp; Circuit Breakers                   │
+│    - Structured Outputs    │    - Human-in-the-Loop Triggers                 │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│  5.3 Tool Design Patterns  │  5.4 Memory &amp; Context                           │
+│    - Pydantic Schemas      │    - Short-Term History &amp; Context Pruning        │
+│    - Idempotency Tags      │    - State Hydration &amp; Checkpoints               │
+│    - MCP / Dynamic Disc.   │    - Long-Term Memory (Cross-Session)            │
+│    - Output Contracts      │    - Declarative SOP / Prompt-RAG                │
+├────────────────────────────┼─────────────────────────────────────────────────┤
+│  5.9 Reflection &amp;          │  5.13 Grounding &amp; Knowledge Retrieval (RAG)     │
+│    Self-Critique           │    - Agentic RAG vs. Pipeline RAG               │
+│    - Inner Critic Loop     │    - Retrieval as a Tool                        │
+│    - Verify-then-Return    │    - Grounding Verification                     │
+├────────────────────────────┴─────────────────────────────────────────────────┤
+│  5.5 Error Taxonomy &amp; Escalation Ladder                                      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.11 Output Validation &amp; Response Guardrails (PII, Schema, Safety)          │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.12 Conversation Management (Clarification, Follow-ups, Corrections)       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  5.6 Security, Auth, Multi-Tenancy &amp; Cost Governance                         │
+└──────────────────────────────────────────────────────────────────────────┘
+</div></code></pre>
+<h3 id="%F0%9F%A7%A0-51-the-cognitive-brain-model-abstraction--prompt-caching">🧠 5.1 The Cognitive Brain (Model Abstraction &amp; Prompt Caching)</h3>
+<p><strong>Provider Agnosticism</strong>: Abstract model providers behind a unified interface (<code>BaseLLMClient</code>). Application logic should never directly invoke vendor SDKs. This allows seamless failover from one provider to another (e.g., Anthropic → Hugging Face) without touching agent loop code.</p>
+<p><strong>Prompt Caching Friendliness</strong>: Place large, static context blocks (system prompts, tool definitions, reference documentation) at the <strong>very beginning</strong> of the prompt payload. Keep this prefix static across turns so providers (Anthropic, Gemini) can cache the token computation, reducing cost and latency by up to 80%.</p>
+<pre class="hljs"><code><div>┌────────────────────────────────────────────────────────────┐
+│ STATIC PREFIX (CACHED)                                      │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ System Prompt + Tool Schemas + Base SOP Instructions   │  │
+│ └────────────────────────────────────────────────────────┘  │
+├────────────────────────────────────────────────────────────┤
+│ DYNAMIC SUFFIX (NOT CACHED)                                 │
+│ ┌────────────────────────────────────────────────────────┐  │
+│ │ Conversation History + Injected SOP + Current Query    │  │
+│ └────────────────────────────────────────────────────────┘  │
+└────────────────────────────────────────────────────────────┘
+</div></code></pre>
+<p><strong>Structured Outputs</strong>: Never parse model output using custom regex or string splitting. Always rely on native API tool calling (function calling) or Pydantic/JSON schema enforcement at the API boundary. This guarantees structural validity and eliminates an entire class of parsing bugs.</p>
+<h3 id="%F0%9F%94%84-52-control--orchestration-retry-circuit-breakers-hitl">🔄 5.2 Control &amp; Orchestration (Retry, Circuit Breakers, HITL)</h3>
+<p>The control layer manages execution transitions, failure recovery, and human escalation.</p>
+<p><strong>Retry with Exponential Backoff &amp; Jitter</strong>: LLM API calls are inherently unreliable (rate limits, network timeouts, server errors). Every <code>client.generate()</code> call must be wrapped in a retry handler:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">import</span> random
+<span class="hljs-keyword">import</span> time
+
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">retry_with_backoff</span><span class="hljs-params">(fn, max_attempts=<span class="hljs-number">3</span>, base_delay=<span class="hljs-number">1.0</span>, max_delay=<span class="hljs-number">30.0</span>)</span>:</span>
+    <span class="hljs-string">"""
+    Retries a function call with exponential backoff and jitter.
+    Handles transient errors (429 rate limits, 500 server errors, timeouts).
+    """</span>
+    <span class="hljs-keyword">for</span> attempt <span class="hljs-keyword">in</span> range(<span class="hljs-number">1</span>, max_attempts + <span class="hljs-number">1</span>):
+        <span class="hljs-keyword">try</span>:
+            <span class="hljs-keyword">return</span> fn()
+        <span class="hljs-keyword">except</span> (RateLimitError, TimeoutError, ConnectionError) <span class="hljs-keyword">as</span> e:
+            <span class="hljs-keyword">if</span> attempt == max_attempts:
+                <span class="hljs-keyword">raise</span>  <span class="hljs-comment"># Exhausted retries — escalate</span>
+            delay = min(base_delay * (<span class="hljs-number">2</span> ** (attempt - <span class="hljs-number">1</span>)), max_delay)
+            jitter = random.uniform(<span class="hljs-number">0</span>, delay * <span class="hljs-number">0.5</span>)
+            time.sleep(delay + jitter)
+</div></code></pre>
+<p><strong>Circuit Breaker Pattern</strong>: After N consecutive provider failures (e.g., 5), stop retrying the primary provider and automatically switch to the fallback provider defined in config. This prevents cascading failures and wasted spend during provider outages.</p>
+<pre class="hljs"><code><div>Primary Provider (Anthropic)
+    │
+    ├── Success → Continue
+    ├── Failure 1–4 → Retry with backoff
+    └── Failure 5 → Circuit OPEN → Switch to Fallback Provider (HuggingFace)
+                                          │
+                                          └── Continue agent loop on fallback
+</div></code></pre>
+<p><strong>Human-in-the-Loop (HITL) Triggers</strong>: When an agent experiences N consecutive tool execution failures (<code>hitl_threshold</code> in config), the loop pauses and requests human intervention rather than exhausting <code>max_loops</code>. This is critical for production agents where silent failure wastes resources.</p>
+<p><strong>Idempotency Considerations for Retries</strong>: If a tool call is retried (e.g., due to a timeout where the result was lost), will it produce duplicate side effects? Tools tagged as <code>idempotent: false</code> (like <code>send_email</code>) must NOT be retried blindly — use deduplication tokens or skip-on-timeout strategies.</p>
+<h3 id="%F0%9F%94%A7-53-tool-design-patterns-schemas-idempotency-output-contracts">🔧 5.3 Tool Design Patterns (Schemas, Idempotency, Output Contracts)</h3>
+<p>Tools are the agent's hands. Bad tool design produces bad agents regardless of model quality.</p>
+<p><strong>Tool Anatomy</strong>: Every tool must define:</p>
+<ol>
+<li><strong>Name</strong>: Concise, action-verb prefix (e.g., <code>execute_sql</code>, <code>read_file</code>, not <code>sql</code> or <code>file</code>).</li>
+<li><strong>Description</strong>: The LLM reads this to decide when to use the tool. A vague description → wrong tool selection.</li>
+<li><strong>Input Schema</strong>: Strict Pydantic/JSON Schema for every argument. No <code>**kwargs</code> or untyped dicts.</li>
+<li><strong>Output Contract</strong>: Always return structured results, never raw strings.</li>
+<li><strong>Side Effect Declaration</strong>: <code>idempotent: true/false</code> — can this be safely retried?</li>
+</ol>
+<p><strong>Structured Tool Definition Example</strong>:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">from</span> pydantic <span class="hljs-keyword">import</span> BaseModel, Field
+<span class="hljs-keyword">from</span> typing <span class="hljs-keyword">import</span> Literal
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ExecuteSQLInput</span><span class="hljs-params">(BaseModel)</span>:</span>
+    query: str = Field(description=<span class="hljs-string">"The SQL query to execute. Must be read-only (SELECT)."</span>)
+    database: str = Field(default=<span class="hljs-string">"analytics"</span>, description=<span class="hljs-string">"Target database name."</span>)
+
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">ToolResult</span><span class="hljs-params">(BaseModel)</span>:</span>
+    status: Literal[<span class="hljs-string">"success"</span>, <span class="hljs-string">"error"</span>]
+    data: str = Field(description=<span class="hljs-string">"The result data or error message."</span>)
+    row_count: int | <span class="hljs-literal">None</span> = Field(default=<span class="hljs-literal">None</span>, description=<span class="hljs-string">"Number of rows returned."</span>)
+
+<span class="hljs-meta">@tool(</span>
+    name=<span class="hljs-string">"execute_sql"</span>,
+    description=<span class="hljs-string">"Execute a read-only SQL query against the analytics database. "</span>
+                <span class="hljs-string">"Returns tabular results. Use for data exploration and aggregation."</span>,
+    idempotent=<span class="hljs-literal">True</span>,
+    timeout_seconds=<span class="hljs-number">30</span>,
+)
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">execute_sql</span><span class="hljs-params">(input: ExecuteSQLInput)</span> -&gt; ToolResult:</span>
+    <span class="hljs-string">"""Pydantic enforces input validation. Output is always ToolResult."""</span>
+    <span class="hljs-keyword">try</span>:
+        result = db.execute(input.query)
+        <span class="hljs-keyword">return</span> ToolResult(status=<span class="hljs-string">"success"</span>, data=result.to_csv(), row_count=len(result))
+    <span class="hljs-keyword">except</span> Exception <span class="hljs-keyword">as</span> e:
+        <span class="hljs-keyword">return</span> ToolResult(status=<span class="hljs-string">"error"</span>, data=str(e))
+</div></code></pre>
+<p><strong>Tool Output Contracts</strong>: Always return structured results (<code>{&quot;status&quot;: &quot;success&quot;, &quot;data&quot;: ...}</code>) rather than raw strings. This enables downstream parsing without regex and allows the LLM to reason about success vs. failure reliably.</p>
+<p><strong>Tool Composition Boundaries</strong>: A tool should NOT internally call other tools. Tool composition should be orchestrated by the LLM's reasoning, not hidden in tool implementations. This keeps execution transparent and debuggable.</p>
+<p><strong>Tool Discovery &amp; Dynamic Registration (MCP)</strong>: In enterprise environments, agents need to connect to dozens of data sources and services. Rather than hardcoding every tool integration, use the <strong>Model Context Protocol (MCP)</strong> — an emerging standard (spearheaded by Anthropic) that decouples tools from agents.</p>
+<pre class="hljs"><code><div>Static Tool Registry (Traditional)          Dynamic Tool Discovery (MCP)
+┌──────────────────────┐                    ┌──────────────────────┐
+│  Agent Code          │                    │  Agent Code          │
+│  ├── tool_a.py       │                    │  └── MCP Client      │
+│  ├── tool_b.py       │                    │       │              │
+│  └── tool_c.py       │                    │       ├──► Postgres MCP Server
+│  (All hardcoded)     │                    │       ├──► Slack MCP Server
+└──────────────────────┘                    │       └──► Jira MCP Server
+                                            └──────────────────────┘
+</div></code></pre>
+<ul>
+<li><strong>MCP Servers</strong>: Lightweight, self-describing tool endpoints. Each server advertises its available tools, input schemas, and capabilities via a standard protocol.</li>
+<li><strong>Runtime Discovery</strong>: The agent queries connected MCP servers at startup (or dynamically) to learn what tools are available — no custom integration code per service.</li>
+<li><strong>Security Boundary</strong>: MCP servers handle their own authentication and data access, so the agent never needs raw database credentials.</li>
+<li><strong>When to Use Static vs. Dynamic</strong>:
+<ul>
+<li><em>Static Registry</em>: Small, stable tool sets where you control all integrations (e.g., early development, single-purpose agents).</li>
+<li><em>Dynamic Discovery (MCP)</em>: Growing tool ecosystems, multi-tenant platforms, or when external teams provide tool servers independently.</li>
+</ul>
+</li>
+</ul>
+<h3 id="%F0%9F%92%BE-54-memory-context--state-hydration">💾 5.4 Memory, Context &amp; State Hydration</h3>
+<p><strong>Short-Term History</strong>: The conversation thread (system prompt + user query + assistant turns + tool results) maintained directly in the LLM context window.</p>
+<p><strong>Context Pruning</strong>: When conversation length approaches token limits, summarize older turns while retaining:</p>
+<ul>
+<li>The initial system prompt and tool schemas (always preserved).</li>
+<li>The most recent N assistant turns (preserves reasoning continuity).</li>
+<li>A synthesized summary of all older turns.</li>
+</ul>
+<p><strong>State Hydration &amp; Checkpoints</strong>: Record a persistent state record after each turn:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"checkpoint_id"</span>: <span class="hljs-string">"step_04"</span>,
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2026-07-29T17:00:00Z"</span>,
+  <span class="hljs-attr">"loop_index"</span>: <span class="hljs-number">4</span>,
+  <span class="hljs-attr">"messages_hash"</span>: <span class="hljs-string">"a3f8c1..."</span>,
+  <span class="hljs-attr">"active_sop"</span>: <span class="hljs-string">"data_cleaning"</span>,
+  <span class="hljs-attr">"checklist_state"</span>: {<span class="hljs-attr">"step_1"</span>: <span class="hljs-string">"done"</span>, <span class="hljs-attr">"step_2"</span>: <span class="hljs-string">"in_progress"</span>},
+  <span class="hljs-attr">"total_tokens_used"</span>: <span class="hljs-number">45230</span>
+}
+</div></code></pre>
+<p>If the process crashes or encounters a network partition, the agent rehydrates its state and resumes from the last known good checkpoint instead of restarting from scratch.</p>
+<p><strong>Declarative SOPs &amp; Dynamic Injection</strong>: Keep base prompts minimal and static (for caching). Store procedural runbooks as standalone markdown files (<code>sops/data_cleaning.md</code>, <code>sops/visualization.md</code>). A routing mechanism evaluates the user's intent and appends only the relevant SOP to the prompt at runtime.</p>
+<p><strong>Prompt-RAG for Enterprise Scale</strong>: When SOPs number in the hundreds, keyword-based routing becomes unmaintainable. Replace with a <strong>Prompt-RAG</strong> system: embed all SOPs in a vector database and retrieve the top-K relevant procedures via semantic similarity search on the user query.</p>
+<p><strong>Long-Term Memory (Cross-Session Persistence)</strong>: The mechanisms above (short-term history, checkpoints) all operate <em>within</em> a single session. Enterprise agents that interact with the same user or tenant repeatedly need memory that persists <strong>across sessions</strong>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Memory Type</th>
+<th style="text-align:left">What It Stores</th>
+<th style="text-align:left">Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Episodic</strong></td>
+<td style="text-align:left">Records of past interactions and their outcomes</td>
+<td style="text-align:left">&quot;Last time user asked about Q1 revenue, data source was <code>analytics.revenue_q1</code>.&quot;</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Semantic</strong></td>
+<td style="text-align:left">Learned facts and domain knowledge about the user/tenant</td>
+<td style="text-align:left">&quot;This user prefers dark-themed bar charts. Their primary KPI is MRR.&quot;</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Procedural</strong></td>
+<td style="text-align:left">Learned operational preferences and workflows</td>
+<td style="text-align:left">&quot;For this tenant, always filter by <code>region = APAC</code> before aggregation.&quot;</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>Storage</strong>: Use a persistent store (SQLite, Postgres, Redis) keyed by <code>user_id</code> or <code>tenant_id</code>.</li>
+<li><strong>Retrieval</strong>: At session start, load relevant long-term memories and inject them into the system prompt as contextual priors.</li>
+<li><strong>Update</strong>: After each session, extract and persist new learnings (user corrections, preferences, domain facts).</li>
+<li><strong>Decay &amp; Relevance</strong>: Implement recency weighting or explicit expiration to prevent stale memories from polluting future sessions.</li>
+</ul>
+<h3 id="%F0%9F%9A%A8-55-error-taxonomy--escalation-ladder">🚨 5.5 Error Taxonomy &amp; Escalation Ladder</h3>
+<p>Without classifying errors and mapping each class to a handler strategy, agents fail unpredictably in production. Define a clear taxonomy:</p>
+<pre class="hljs"><code><div>Error Taxonomy for Agent Systems
+├── Transient Errors (Retry-Safe)
+│   ├── LLM API rate limits (429)       → Exponential backoff with jitter
+│   ├── Network timeouts                → Retry with circuit breaker
+│   ├── Sandbox OOM / process timeout   → Retry with resource bump or fallback
+│   └── Provider 500/503 errors         → Retry; circuit breaker after threshold
+│
+├── Semantic Errors (Self-Correctable by LLM)
+│   ├── Tool argument validation error  → Re-prompt with schema hint in observation
+│   ├── Code syntax error (generated)   → Feed STDERR back, LLM self-corrects
+│   ├── Wrong tool selection            → Observation feedback corrects next turn
+│   └── Partial/incomplete output       → Prompt LLM to continue or refine
+│
+├── Logical Errors (Needs Escalation)
+│   ├── Repeated identical failures     → RepetitionDetector triggers HITL interrupt
+│   ├── Hallucinated tool names         → Hard stop + log for evaluation
+│   ├── Infinite reasoning loops        → max_loops circuit breaker fires
+│   └── Contradictory tool results      → HITL interrupt with context dump
+│
+└── Fatal Errors (Immediate Abort)
+    ├── Auth/credential failures        → Abort + alert ops team
+    ├── Data corruption detected        → Abort + rollback to last checkpoint
+    ├── Security policy violation       → Abort + audit log + alert
+    └── Token budget exhausted          → Graceful stop + return partial results
+</div></code></pre>
+<p><strong>Escalation Ladder Implementation</strong>:</p>
+<pre class="hljs"><code><div><span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">EscalationLadder</span>:</span>
+    <span class="hljs-string">"""Maps error classes to handler strategies."""</span>
+    
+    STRATEGIES = {
+        <span class="hljs-string">"transient"</span>:  <span class="hljs-string">"retry_with_backoff"</span>,     <span class="hljs-comment"># Auto-retry</span>
+        <span class="hljs-string">"semantic"</span>:   <span class="hljs-string">"feed_observation_back"</span>,   <span class="hljs-comment"># LLM self-corrects</span>
+        <span class="hljs-string">"logical"</span>:    <span class="hljs-string">"pause_and_escalate_hitl"</span>, <span class="hljs-comment"># Human reviews</span>
+        <span class="hljs-string">"fatal"</span>:      <span class="hljs-string">"abort_and_alert"</span>,         <span class="hljs-comment"># Immediate shutdown</span>
+    }
+    
+    <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">classify</span><span class="hljs-params">(self, error: Exception, context: dict)</span> -&gt; str:</span>
+        <span class="hljs-keyword">if</span> isinstance(error, (RateLimitError, TimeoutError)):
+            <span class="hljs-keyword">return</span> <span class="hljs-string">"transient"</span>
+        <span class="hljs-keyword">if</span> isinstance(error, ToolValidationError):
+            <span class="hljs-keyword">return</span> <span class="hljs-string">"semantic"</span>
+        <span class="hljs-keyword">if</span> context.get(<span class="hljs-string">"consecutive_failures"</span>, <span class="hljs-number">0</span>) &gt;= <span class="hljs-number">3</span>:
+            <span class="hljs-keyword">return</span> <span class="hljs-string">"logical"</span>
+        <span class="hljs-keyword">if</span> isinstance(error, (AuthError, SecurityViolation)):
+            <span class="hljs-keyword">return</span> <span class="hljs-string">"fatal"</span>
+        <span class="hljs-keyword">return</span> <span class="hljs-string">"semantic"</span>  <span class="hljs-comment"># Default: let LLM try to recover</span>
+</div></code></pre>
+<h3 id="%F0%9F%94%92-56-security-auth-multi-tenancy--cost-governance">🔒 5.6 Security, Auth, Multi-Tenancy &amp; Cost Governance</h3>
+<h4 id="authentication--authorization">Authentication &amp; Authorization</h4>
+<p>Enterprise agents serve multiple users, teams, or customers. Every agent session must carry identity context:</p>
+<ul>
+<li><strong>Per-user/per-tenant tool permissions</strong>: User A can run SQL queries; User B can only read files. Enforce this in the tool dispatcher, not the prompt.</li>
+<li><strong>API key management</strong>: Rotate keys on schedule. Store in a vault (HashiCorp Vault, AWS Secrets Manager). Never embed keys in agent config files.</li>
+<li><strong>Session isolation</strong>: Tenant A's conversation history must never leak into Tenant B's context window. Use isolated state backends per session.</li>
+</ul>
+<p><strong>Audit Trail</strong>: Every tool execution must log a structured audit record:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2026-07-29T17:00:00Z"</span>,
+  <span class="hljs-attr">"session_id"</span>: <span class="hljs-string">"sess_abc123"</span>,
+  <span class="hljs-attr">"user_id"</span>: <span class="hljs-string">"user_456"</span>,
+  <span class="hljs-attr">"tenant_id"</span>: <span class="hljs-string">"tenant_xyz"</span>,
+  <span class="hljs-attr">"tool_name"</span>: <span class="hljs-string">"execute_sql"</span>,
+  <span class="hljs-attr">"tool_args_hash"</span>: <span class="hljs-string">"sha256:a3f8c1..."</span>,
+  <span class="hljs-attr">"result_status"</span>: <span class="hljs-string">"success"</span>,
+  <span class="hljs-attr">"tokens_used"</span>: <span class="hljs-number">1250</span>,
+  <span class="hljs-attr">"execution_time_ms"</span>: <span class="hljs-number">340</span>
+}
+</div></code></pre>
+<h4 id="cost-governance--token-economics">Cost Governance &amp; Token Economics</h4>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Control</th>
+<th style="text-align:left">Mechanism</th>
+<th style="text-align:left">Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Per-session token budget</strong></td>
+<td style="text-align:left">Hard cap (e.g., 500K tokens)</td>
+<td style="text-align:left">Prevents runaway sessions</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Per-tool cost weighting</strong></td>
+<td style="text-align:left">Tag tools with relative cost</td>
+<td style="text-align:left">Factor into routing decisions</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Model tiering</strong></td>
+<td style="text-align:left">Use cheap/fast models for simple tasks</td>
+<td style="text-align:left"><code>classify → Flash</code>, <code>reason → Opus</code></td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Budget alerts</strong></td>
+<td style="text-align:left">Alert at 80% of budget consumed</td>
+<td style="text-align:left">Ops team can review before cutoff</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Cost dashboards</strong></td>
+<td style="text-align:left">Real-time visibility</td>
+<td style="text-align:left">Spend per agent, per user, per day</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Model Tiering Strategy</strong>: Not every step in an agent loop requires a frontier model. Route intelligently:</p>
+<pre class="hljs"><code><div>User query → Intent Classifier (cheap model: Flash/Haiku)
+                │
+                ├── Simple extraction → Single call (cheap model)
+                └── Complex reasoning → ReAct loop (expensive model: Opus/o1)
+</div></code></pre>
+<h3 id="%F0%9F%91%81%EF%B8%8F-57-observability-tracing--dual-transcripts">👁️ 5.7 Observability, Tracing &amp; Dual Transcripts</h3>
+<p>Maintain a <strong>Dual-Transcript Strategy</strong> for debugging and trajectory analysis:</p>
+<ol>
+<li>
+<p><strong><code>transcript.jsonl</code></strong>: Truncated, lightweight event log. Tool arguments and outputs are trimmed to configurable limits. Optimized for fast grep-based daily monitoring and log aggregation.</p>
+</li>
+<li>
+<p><strong><code>transcript_full.jsonl</code></strong>: Untruncated, exact raw payload log containing full system prompts, tool schemas, and model completions. Used for deep trajectory replay, regression analysis, and audit.</p>
+</li>
+</ol>
+<p><strong>Per-Turn Structured Log Entry</strong>:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"turn_id"</span>: <span class="hljs-number">4</span>,
+  <span class="hljs-attr">"timestamp"</span>: <span class="hljs-string">"2026-07-29T17:00:12Z"</span>,
+  <span class="hljs-attr">"session_id"</span>: <span class="hljs-string">"sess_abc123"</span>,
+  <span class="hljs-attr">"action"</span>: <span class="hljs-string">"tool_call"</span>,
+  <span class="hljs-attr">"tool_name"</span>: <span class="hljs-string">"execute_python"</span>,
+  <span class="hljs-attr">"input_tokens"</span>: <span class="hljs-number">12450</span>,
+  <span class="hljs-attr">"output_tokens"</span>: <span class="hljs-number">890</span>,
+  <span class="hljs-attr">"cumulative_tokens"</span>: <span class="hljs-number">53200</span>,
+  <span class="hljs-attr">"cumulative_cost_usd"</span>: <span class="hljs-number">0.42</span>,
+  <span class="hljs-attr">"latency_ms"</span>: <span class="hljs-number">2340</span>,
+  <span class="hljs-attr">"tool_status"</span>: <span class="hljs-string">"success"</span>,
+  <span class="hljs-attr">"error_class"</span>: <span class="hljs-literal">null</span>
+}
+</div></code></pre>
+<p><strong>Recommended Instrumentation Libraries</strong>: OpenTelemetry for general tracing; Arize Phoenix, Langfuse, or Braintrust for LLM-specific trajectory evaluation.</p>
+<h3 id="%F0%9F%93%8B-58-planning--task-decomposition">📋 5.8 Planning &amp; Task Decomposition</h3>
+<p>Before an agent starts executing tools, it should <em>plan</em>. Planning is a distinct cognitive step from reactive tool-calling. Without planning, agents wander — they try random tools, backtrack, and waste loops. Planning is what separates a competent agent from a brute-force tool-caller.</p>
+<p><strong>Planning Patterns</strong>:</p>
+<pre class="hljs"><code><div>Pattern A: Plan-then-Execute (Structured)
+┌─────────────────────────────────────────────────────┐
+│ 1. LLM receives query                               │
+│ 2. LLM outputs a numbered step plan                 │
+│ 3. Agent executes each step sequentially             │
+│ 4. If a step fails, re-plan from that point          │
+└─────────────────────────────────────────────────────┘
+
+Pattern B: Dynamic Re-Planning (Adaptive)
+┌─────────────────────────────────────────────────────┐
+│ 1. LLM creates initial plan                          │
+│ 2. Execute Step 1 → Observe result                   │
+│ 3. LLM revises remaining plan based on observation   │
+│ 4. Repeat: execute → observe → re-plan               │
+└─────────────────────────────────────────────────────┘
+
+Pattern C: Pure ReAct (No Explicit Plan)
+┌─────────────────────────────────────────────────────┐
+│ 1. LLM reasons step-by-step without a written plan   │
+│ 2. Each turn decides the next action independently    │
+│ 3. Works for simple tasks; degrades on complex ones   │
+└─────────────────────────────────────────────────────┘
+</div></code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Pattern</th>
+<th style="text-align:left">Best For</th>
+<th style="text-align:left">Tradeoff</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Plan-then-Execute</strong></td>
+<td style="text-align:left">Well-defined multi-step tasks (data pipelines, report generation)</td>
+<td style="text-align:left">Structured but brittle if intermediate results are unexpected</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Dynamic Re-Planning</strong></td>
+<td style="text-align:left">Complex, exploratory tasks where the path is uncertain</td>
+<td style="text-align:left">Most robust but costs extra tokens for re-planning turns</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Pure ReAct</strong></td>
+<td style="text-align:left">The default for frontier reasoning models on most tasks</td>
+<td style="text-align:left">Cheapest and most natural; implicit reasoning replaces explicit plans</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>[!NOTE]
+<strong>Model Capability Determines Pattern Choice, Not Task Complexity Alone.</strong></p>
+<p>With modern frontier reasoning models (Claude Opus/Sonnet, Gemini 2.5 Pro, o1/o3), <strong>Pattern C (Pure ReAct) should be the default</strong> for most tasks — including reasonably complex ones. These models have strong internal chain-of-thought reasoning; forcing an explicit plan structure on them adds token overhead without proportional benefit (the &quot;Token Tax&quot; principle from §5.6).</p>
+<p><strong>Use Pattern A or B as fallbacks when:</strong></p>
+<ul>
+<li>The model is <strong>weaker or smaller</strong> (open-weight models, quantized local models) and genuinely struggles to maintain coherent multi-step reasoning without scaffolding.</li>
+<li>The task is <strong>extremely long</strong> (10+ steps) where even frontier models may lose track due to context window attention drift — explicit checklists provide state grounding (see [lessons_learned.md §4](file:///home/navin/work/AI/projects/Agents/docs/lessons_learned.md)).</li>
+<li><strong>Auditability is required</strong> — an explicit plan provides a traceable artifact for debugging where the agent went wrong.</li>
+<li><strong>Multi-agent orchestration</strong> — an orchestrator agent needs an explicit plan to decompose and delegate sub-tasks across worker agents (see §6).</li>
+</ul>
+<p>In short: trust the model's reasoning first. Add explicit planning scaffolding only when you have evidence the model needs it.</p>
+</blockquote>
+<p><strong>Implementation</strong> (when explicit planning IS needed): The plan can be maintained as:</p>
+<ul>
+<li>A structured JSON array in the conversation history (machine-readable).</li>
+<li>A numbered checklist the agent updates via a <code>manage_checklist</code> tool (explicit grounding).</li>
+<li>An internal chain-of-thought the agent writes before each action (implicit planning).</li>
+</ul>
+<h3 id="%F0%9F%94%8D-59-reflection--self-critique">🔍 5.9 Reflection &amp; Self-Critique</h3>
+<p>Reflection is the ability for an agent to <strong>evaluate its own output before returning it</strong> to the user. Without reflection, agents confidently return wrong or incomplete answers.</p>
+<p><strong>The Reflexion Pattern</strong>:</p>
+<pre class="hljs"><code><div>┌──────────────────────────────────────────────┐
+│  1. Agent completes task → Candidate Answer   │
+│  2. Agent re-reads original question          │
+│  3. Agent critiques its own answer:           │
+│     - &quot;Is this factually correct?&quot;            │
+│     - &quot;Did I address all parts of the query?&quot; │
+│     - &quot;Are the numbers consistent?&quot;           │
+│  4. If critique finds issues → Re-execute     │
+│  5. If critique passes → Return final answer  │
+└──────────────────────────────────────────────┘
+</div></code></pre>
+<p><strong>Reflection Strategies</strong>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Strategy</th>
+<th style="text-align:left">Mechanism</th>
+<th style="text-align:left">Cost</th>
+<th style="text-align:left">Effectiveness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Inner Critic</strong></td>
+<td style="text-align:left">Agent critiques its own response in a follow-up turn</td>
+<td style="text-align:left">Low (1 extra LLM call)</td>
+<td style="text-align:left">Good for catching obvious errors</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Verify-then-Return</strong></td>
+<td style="text-align:left">Agent re-runs a verification tool (e.g., re-executes a query to double-check numbers)</td>
+<td style="text-align:left">Medium (1 tool call)</td>
+<td style="text-align:left">Excellent for data accuracy</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Multi-Turn Refinement</strong></td>
+<td style="text-align:left">Generate → critique → refine → critique → finalize (bounded by max iterations)</td>
+<td style="text-align:left">High (2–4 extra calls)</td>
+<td style="text-align:left">Best quality but most expensive</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>LLM-as-Judge</strong></td>
+<td style="text-align:left">A separate evaluator model scores the output</td>
+<td style="text-align:left">Medium (1 call to judge model)</td>
+<td style="text-align:left">Good for diverse quality dimensions</td>
+</tr>
+</tbody>
+</table>
+<p><strong>When to Use Reflection</strong>:</p>
+<ul>
+<li>Tasks where accuracy is critical (financial data, medical information).</li>
+<li>Tasks where partial answers are common (multi-part questions).</li>
+<li>Tasks where hallucination risk is high (knowledge-intensive queries).</li>
+</ul>
+<p><strong>When to Skip Reflection</strong>:</p>
+<ul>
+<li>Simple, low-stakes tasks (formatting, summarization).</li>
+<li>Latency-critical applications where extra LLM calls are unacceptable.</li>
+<li>When the agent's tools already provide verified outputs (e.g., SQL query results are inherently accurate if the query is correct).</li>
+</ul>
+<h3 id="%F0%9F%9A%A6-510-input-processing--intent-routing">🚦 5.10 Input Processing &amp; Intent Routing</h3>
+<p>Before the ReAct loop begins, there is typically a <strong>classification and routing layer</strong> that determines how the incoming request should be handled. This is the agent's &quot;front door&quot; — getting routing wrong means either wasting resources on simple queries or under-serving complex ones.</p>
+<pre class="hljs"><code><div>┌─────────────────────────────────────────────────────────────────┐
+│                      INPUT PROCESSING LAYER                      │
+│                                                                   │
+│  User Query                                                       │
+│      │                                                            │
+│      ▼                                                            │
+│  ┌──────────────────┐     ┌──────────────────────────────────┐   │
+│  │ Intent Classifier │────►│ Complexity Estimator              │   │
+│  │ (cheap model)     │     │ (single-call vs. agent needed?)   │   │
+│  └──────────────────┘     └───────────────┬──────────────────┘   │
+│                                           │                       │
+│              ┌────────────────────────────┼────────────────┐      │
+│              ▼                            ▼                ▼      │
+│     ┌──────────────┐            ┌──────────────┐  ┌────────────┐ │
+│     │ Single LLM   │            │ SOP/Skill    │  │ Full ReAct │ │
+│     │ Call (fast)   │            │ Router       │  │ Agent Loop │ │
+│     └──────────────┘            └──────────────┘  └────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+</div></code></pre>
+<p><strong>Key Components</strong>:</p>
+<ol>
+<li>
+<p><strong>Intent Classifier</strong>: Uses a cheap, fast model (Flash/Haiku) to categorize the user's request (e.g., &quot;data query&quot;, &quot;chart request&quot;, &quot;general question&quot;, &quot;multi-step analysis&quot;).</p>
+</li>
+<li>
+<p><strong>Complexity Estimator</strong>: Determines whether the request requires:</p>
+<ul>
+<li>A single structured LLM call (simple extraction, classification).</li>
+<li>A specific skill/SOP invocation (known procedure).</li>
+<li>A full ReAct agent loop (open-ended exploration).</li>
+</ul>
+</li>
+<li>
+<p><strong>SOP/Skill Router</strong>: Matches the classified intent to the appropriate Standard Operating Procedure or registered Skill, injecting only the relevant instructions into the prompt.</p>
+</li>
+</ol>
+<p><strong>Why This Matters</strong>: In enterprise systems, 40–60% of incoming queries may be simple lookups or single-step tasks. Routing them through a full agent loop wastes 10–50× the tokens compared to a single LLM call.</p>
+<h3 id="%F0%9F%9B%A1%EF%B8%8F-511-output-validation--response-guardrails">🛡️ 5.11 Output Validation &amp; Response Guardrails</h3>
+<p>The agent's <strong>final output</strong> must pass through a validation gate before reaching the user. The guide's existing guardrails (§5.5, §5.6) focus on <em>input and loop safety</em>. This section covers <em>output safety</em> — the last line of defense.</p>
+<p><strong>Output Validation Pipeline</strong>:</p>
+<pre class="hljs"><code><div>Agent Final Answer
+    │
+    ▼
+┌──────────────────────────────────┐
+│  1. Schema Validation            │  Does the output match the expected
+│     (JSON/Pydantic check)        │  structure and data types?
+├──────────────────────────────────┤
+│  2. PII &amp; Secret Redaction       │  Scrub API keys, passwords, emails,
+│     (regex + NER patterns)       │  phone numbers from tool outputs.
+├──────────────────────────────────┤
+│  3. Factual Grounding Check      │  Are claims supported by actual tool
+│     (cross-ref with observations)│  observations in the conversation?
+├──────────────────────────────────┤
+│  4. Content Safety Filter        │  Block harmful, biased, or policy-
+│     (moderation API or rules)    │  violating content.
+├──────────────────────────────────┤
+│  5. Completeness Check           │  Did the agent address all parts of
+│     (compare against query)      │  the user's original question?
+└──────────────────────────────────┘
+    │
+    ▼
+  ✅ Validated Response → Return to User
+  ❌ Validation Failed → Re-prompt agent or return error with explanation
+</div></code></pre>
+<p><strong>PII Redaction Example Patterns</strong>:</p>
+<ul>
+<li>API keys: <code>sk-[a-zA-Z0-9]{32,}</code> → <code>[REDACTED_API_KEY]</code></li>
+<li>Email addresses: <code>[^@]+@[^@]+\.[^@]+</code> → <code>[REDACTED_EMAIL]</code></li>
+<li>Bearer tokens: <code>Bearer [a-zA-Z0-9._-]+</code> → <code>[REDACTED_TOKEN]</code></li>
+</ul>
+<blockquote>
+<p>[!WARNING]
+Output validation is non-negotiable for enterprise agents. A single PII leak or hallucinated financial number in a customer-facing agent can cause regulatory, legal, and reputational damage.</p>
+</blockquote>
+<h3 id="%F0%9F%92%AC-512-conversation-management--user-interaction-strategy">💬 5.12 Conversation Management &amp; User Interaction Strategy</h3>
+<p>Real agents are not one-shot &quot;query in → answer out&quot; systems. They manage ongoing <strong>multi-turn conversations</strong> with users, requiring strategies for clarification, follow-ups, and corrections.</p>
+<p><strong>Interaction Patterns</strong>:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Situation</th>
+<th style="text-align:left">Agent Behavior</th>
+<th style="text-align:left">Implementation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Ambiguous query</strong></td>
+<td style="text-align:left">Ask for clarification before acting</td>
+<td style="text-align:left">Confidence threshold: if intent classifier confidence &lt; 0.7, ask instead of guess</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Underspecified parameters</strong></td>
+<td style="text-align:left">Request missing information</td>
+<td style="text-align:left">Check required tool inputs; if missing, prompt user</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Follow-up question</strong></td>
+<td style="text-align:left">Connect to prior conversation context</td>
+<td style="text-align:left">Thread new query with existing message history</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>User correction</strong></td>
+<td style="text-align:left">Accept correction and adjust course</td>
+<td style="text-align:left">Acknowledge error, update plan, re-execute from correction point</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Partial results</strong></td>
+<td style="text-align:left">Offer to continue or refine</td>
+<td style="text-align:left">&quot;I found X so far. Would you like me to dig deeper into Y?&quot;</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Clarification vs. Assumption Decision</strong>:</p>
+<pre class="hljs"><code><div>User Query
+    │
+    ▼
+Is the query unambiguous? ──Yes──► Proceed to execution
+    │
+    No
+    │
+    ▼
+Can I make a reasonable      ──Yes──► State assumption explicitly,
+default assumption?                     then proceed
+    │
+    No
+    │
+    ▼
+Ask for clarification ◄──── &quot;Could you clarify whether you mean X or Y?&quot;
+</div></code></pre>
+<p><strong>Key Principle</strong>: When in doubt, <strong>state your assumption and proceed</strong> rather than blocking with a question — unless the ambiguity could lead to irreversible actions (e.g., deleting data, sending emails). For irreversible actions, always confirm.</p>
+<h3 id="%F0%9F%93%9A-513-grounding--knowledge-retrieval-rag-integration">📚 5.13 Grounding &amp; Knowledge Retrieval (RAG Integration)</h3>
+<p>Enterprise agents must reason over <strong>proprietary, domain-specific data</strong> that is not in the LLM's training set. Without grounding, agents hallucinate domain facts.</p>
+<p><strong>Agentic RAG vs. Pipeline RAG</strong>:</p>
+<pre class="hljs"><code><div>Pipeline RAG (Always Retrieve)           Agentic RAG (Agent Decides)
+┌────────────────────────────┐           ┌────────────────────────────┐
+│ 1. User query              │           │ 1. User query              │
+│ 2. ALWAYS retrieve from DB │           │ 2. Agent reasons: Do I     │
+│ 3. Stuff context + query   │           │    need external knowledge?│
+│ 4. LLM generates answer    │           │ 3. If yes → invoke         │
+│                            │           │    search_knowledge_base() │
+│ (Retrieves even when       │           │ 4. If no → answer from     │
+│  unnecessary)              │           │    existing context         │
+└────────────────────────────┘           └────────────────────────────┘
+</div></code></pre>
+<p><strong>Retrieval as a Tool</strong>: Expose knowledge retrieval as a first-class tool the agent can invoke when needed:</p>
+<pre class="hljs"><code><div><span class="hljs-meta">@tool(</span>
+    name=<span class="hljs-string">"search_knowledge_base"</span>,
+    description=<span class="hljs-string">"Search the company knowledge base for relevant documents, "</span>
+                <span class="hljs-string">"policies, or historical data. Use when the answer requires "</span>
+                <span class="hljs-string">"company-specific information not available in the conversation."</span>,
+    idempotent=<span class="hljs-literal">True</span>,
+)
+<span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">search_knowledge_base</span><span class="hljs-params">(query: str, top_k: int = <span class="hljs-number">5</span>)</span> -&gt; ToolResult:</span>
+    results = vector_store.similarity_search(query, k=top_k)
+    <span class="hljs-keyword">return</span> ToolResult(
+        status=<span class="hljs-string">"success"</span>,
+        data=<span class="hljs-string">"\n\n"</span>.join([doc.page_content <span class="hljs-keyword">for</span> doc <span class="hljs-keyword">in</span> results]),
+        metadata={<span class="hljs-string">"sources"</span>: [doc.metadata[<span class="hljs-string">"source"</span>] <span class="hljs-keyword">for</span> doc <span class="hljs-keyword">in</span> results]}
+    )
+</div></code></pre>
+<p><strong>Grounding Verification</strong>: After the agent produces an answer using retrieved context, verify that claims are actually supported by the retrieved documents — not fabricated by the LLM. This connects to the Output Validation layer (§5.11).</p>
+<p><strong>When to Use Agentic RAG vs. Pipeline RAG</strong>:</p>
+<ul>
+<li><em>Agentic RAG</em>: When only some queries need external knowledge; saves cost by avoiding unnecessary retrievals.</li>
+<li><em>Pipeline RAG</em>: When virtually every query requires external context (e.g., customer support over a knowledge base).</li>
+</ul>
+<hr>
+<h2 id="%F0%9F%8C%90-6-multi-agent-orchestration-deep-dive">🌐 6. Multi-Agent Orchestration Deep Dive</h2>
+<p>Multi-agent systems are the core differentiator between a single autonomous script and an enterprise-grade agentic platform. When tasks grow large enough that a single agent's context window, tool set, or reasoning scope becomes a bottleneck, you decompose into specialized agents.</p>
+<h3 id="%F0%9F%94%80-61-orchestration-topologies">🔀 6.1 Orchestration Topologies</h3>
+<pre><code class="language-mermaid"><div class="mermaid">flowchart TD
+    subgraph HubSpoke ["Topology A: Hub-and-Spoke"]
+        O1["Orchestrator\n(Planner)"] --> W1["Worker A\n(Data)"]
+        O1 --> W2["Worker B\n(Code)"]
+        O1 --> W3["Worker C\n(Report)"]
+    end
+
+    subgraph Hierarchical ["Topology B: Hierarchical"]
+        P["Planner"] --> E1["Executor 1"]
+        P --> E2["Executor 2"]
+        E1 --> R1["Reviewer"]
+        E2 --> R1
+        R1 -->|"Feedback"| P
+    end
+
+    subgraph PeerToPeer ["Topology C: Peer-to-Peer"]
+        A1["Agent 1"] <-->|"Message"| A2["Agent 2"]
+        A2 <-->|"Message"| A3["Agent 3"]
+        A3 <-->|"Message"| A1
+    end
+</div></code></pre>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Topology</th>
+<th style="text-align:left">When to Use</th>
+<th style="text-align:left">Complexity</th>
+<th style="text-align:left">Failure Handling</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Hub-and-Spoke</strong></td>
+<td style="text-align:left">Clear decomposition; orchestrator knows task structure</td>
+<td style="text-align:left">Medium</td>
+<td style="text-align:left">Orchestrator retries or replaces failed workers</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Hierarchical</strong></td>
+<td style="text-align:left">Self-correcting systems (code → review → iterate)</td>
+<td style="text-align:left">High</td>
+<td style="text-align:left">Reviewer feeds back; planner re-plans</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Peer-to-Peer</strong></td>
+<td style="text-align:left">Collaborative negotiation (debate, consensus)</td>
+<td style="text-align:left">Very High</td>
+<td style="text-align:left">Requires quorum or voting mechanisms</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E2%9C%89%EF%B8%8F-62-delegation-protocol--message-schema">✉️ 6.2 Delegation Protocol &amp; Message Schema</h3>
+<p>When Agent A delegates a task to Agent B, the handoff must be structured to prevent ambiguity, context loss, and untracked work.</p>
+<p><strong>Delegation Message Schema</strong>:</p>
+<pre class="hljs"><code><div>{
+  <span class="hljs-attr">"task_id"</span>: <span class="hljs-string">"task_001_cohort_analysis"</span>,
+  <span class="hljs-attr">"parent_agent"</span>: <span class="hljs-string">"orchestrator_v1"</span>,
+  <span class="hljs-attr">"child_agent"</span>: <span class="hljs-string">"data_analyst_v1"</span>,
+  <span class="hljs-attr">"task_description"</span>: <span class="hljs-string">"Calculate monthly cohort retention for Q1 2026 users."</span>,
+  <span class="hljs-attr">"context_payload"</span>: {
+    <span class="hljs-attr">"data_source"</span>: <span class="hljs-string">"analytics.users"</span>,
+    <span class="hljs-attr">"date_range"</span>: <span class="hljs-string">"2026-01-01 to 2026-03-31"</span>,
+    <span class="hljs-attr">"prior_findings"</span>: <span class="hljs-string">"Initial exploration shows 45K users acquired in Q1."</span>
+  },
+  <span class="hljs-attr">"constraints"</span>: {
+    <span class="hljs-attr">"max_loops"</span>: <span class="hljs-number">10</span>,
+    <span class="hljs-attr">"token_budget"</span>: <span class="hljs-number">50000</span>,
+    <span class="hljs-attr">"timeout_seconds"</span>: <span class="hljs-number">120</span>,
+    <span class="hljs-attr">"allowed_tools"</span>: [<span class="hljs-string">"execute_sql"</span>, <span class="hljs-string">"execute_python"</span>]
+  },
+  <span class="hljs-attr">"expected_output_schema"</span>: {
+    <span class="hljs-attr">"type"</span>: <span class="hljs-string">"object"</span>,
+    <span class="hljs-attr">"properties"</span>: {
+      <span class="hljs-attr">"summary"</span>: {<span class="hljs-attr">"type"</span>: <span class="hljs-string">"string"</span>},
+      <span class="hljs-attr">"retention_matrix"</span>: {<span class="hljs-attr">"type"</span>: <span class="hljs-string">"array"</span>},
+      <span class="hljs-attr">"chart_path"</span>: {<span class="hljs-attr">"type"</span>: <span class="hljs-string">"string"</span>}
+    }
+  }
+}
+</div></code></pre>
+<h3 id="%F0%9F%A7%A9-63-result-aggregation-strategies">🧩 6.3 Result Aggregation Strategies</h3>
+<p>When multiple sub-agents return results, the orchestrator must synthesize them:</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Strategy</th>
+<th style="text-align:left">Mechanism</th>
+<th style="text-align:left">Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Concatenation</strong></td>
+<td style="text-align:left">Append all sub-agent outputs sequentially</td>
+<td style="text-align:left">Report assembly, multi-section documents</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Voting / Consensus</strong></td>
+<td style="text-align:left">Multiple agents answer the same question; majority wins</td>
+<td style="text-align:left">High-stakes classification, fact verification</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>LLM-as-Judge Synthesis</strong></td>
+<td style="text-align:left">A judge agent evaluates all sub-outputs and produces a unified answer</td>
+<td style="text-align:left">Complex analysis, conflicting findings</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Schema Merge</strong></td>
+<td style="text-align:left">Combine structured outputs (e.g., merge DataFrames)</td>
+<td style="text-align:left">Data pipeline agents, parallel data processing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%E2%9A%A1-64-failure-propagation--recovery">⚡ 6.4 Failure Propagation &amp; Recovery</h3>
+<p>When a sub-agent fails, the parent orchestrator must decide:</p>
+<pre class="hljs"><code><div>Sub-Agent Failure
+    │
+    ├── Transient failure (timeout, rate limit)
+    │   └── Retry the same sub-agent with same task
+    │
+    ├── Semantic failure (wrong output format)
+    │   └── Retry with clarified instructions or stricter schema
+    │
+    ├── Logical failure (max_loops exhausted, repeated errors)
+    │   ├── Option A: Retry with a different model (upgrade to frontier)
+    │   ├── Option B: Decompose further into smaller sub-tasks
+    │   └── Option C: Escalate to HITL with context dump
+    │
+    └── Fatal failure (auth error, data corruption)
+        └── Abort entire workflow + alert + rollback
+</div></code></pre>
+<h3 id="%F0%9F%94%92-65-context-isolation-vs-sharing">🔒 6.5 Context Isolation vs. Sharing</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Mode</th>
+<th style="text-align:left">Mechanism</th>
+<th style="text-align:left">Tradeoff</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Full Isolation</strong></td>
+<td style="text-align:left">Each sub-agent starts with a clean context window; only receives the delegation payload</td>
+<td style="text-align:left">Maximum focus; no context pollution. But loses ambient knowledge.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Shared Memory</strong></td>
+<td style="text-align:left">Sub-agents read/write to a shared state store (Redis, shared file)</td>
+<td style="text-align:left">Enables collaboration. But risks context contamination and race conditions.</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Selective Injection</strong></td>
+<td style="text-align:left">Orchestrator curates a context summary and injects relevant excerpts into each sub-agent's prompt</td>
+<td style="text-align:left">Best balance. Requires orchestrator intelligence to select relevant context.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="%F0%9F%93%9D-7-prompt-engineering-versioning--ab-testing">📝 7. Prompt Engineering, Versioning &amp; A/B Testing</h2>
+<p>Prompt changes are the <strong>most common source of regressions</strong> in agent systems. A one-word change in the system prompt can cause a previously working agent to loop infinitely or skip steps.</p>
+<h3 id="71-prompt-as-code-versioning">7.1 Prompt-as-Code Versioning</h3>
+<p>Treat prompts exactly like source code:</p>
+<ul>
+<li>Store in version-controlled files (<code>prompts/system_v1.2.0.md</code>).</li>
+<li>Review prompt changes in pull requests.</li>
+<li>Diff prompts between versions to understand behavioral changes.</li>
+<li>Never hardcode prompts as inline strings in Python files.</li>
+</ul>
+<h3 id="72-prompt-templating-with-jinja2">7.2 Prompt Templating with Jinja2</h3>
+<p>Use a templating engine to dynamically compose prompts from static and runtime components:</p>
+<pre class="hljs"><code><div><span class="hljs-section"># System Prompt: {{ agent.name }} v{{ agent.version }}</span>
+
+You are an autonomous {{ agent.description }}.
+
+<span class="hljs-section">## Available Tools</span>
+{% for tool in tools %}
+<span class="hljs-bullet">- </span><span class="hljs-strong">**{{ tool.name }}**</span>: {{ tool.description }}
+{% endfor %}
+
+<span class="hljs-section">## Active SOP</span>
+{{ active<span class="hljs-emphasis">_sop_</span>content }}
+
+<span class="hljs-section">## Constraints</span>
+<span class="hljs-bullet">- </span>Maximum execution steps: {{ guardrails.max_loops }}
+<span class="hljs-bullet">- </span>Output format: {{ output_schema }}
+</div></code></pre>
+<h3 id="73-ab-testing--prompt-registries">7.3 A/B Testing &amp; Prompt Registries</h3>
+<p>For enterprise scale:</p>
+<ul>
+<li><strong>A/B Testing</strong>: Run two prompt variants simultaneously on split traffic. Compare task completion rates, loop counts, and costs to determine the winner.</li>
+<li><strong>External Prompt Registries</strong>: Use platforms like Langfuse, Langsmith, or Braintrust to store, version, and retrieve prompts at runtime via API. This decouples prompt updates from code deployments, enabling hotfixes and rollbacks without redeployment.</li>
+</ul>
+<h3 id="74-prompt-regression-testing">7.4 Prompt Regression Testing</h3>
+<p>Every prompt change must trigger the trajectory test suite (see §8). If a new prompt version degrades completion rate or increases average loop count beyond a threshold, the change should be flagged or blocked.</p>
+<hr>
+<h2 id="%F0%9F%93%88-8-evaluation-testing--trajectory-benchmarks">📈 8. Evaluation, Testing &amp; Trajectory Benchmarks</h2>
+<p>You cannot ship or iterate an agent you cannot measure. Systematic evaluation is non-negotiable for enterprise agents.</p>
+<h3 id="%F0%9F%A7%AA-81-golden-trajectory-tests">🧪 8.1 Golden Trajectory Tests</h3>
+<p>Pre-recorded test cases that define the expected behavior for known inputs:</p>
+<pre class="hljs"><code><div><span class="hljs-comment"># test_cases/revenue_query.yaml</span>
+<span class="hljs-attr">test_case:</span> <span class="hljs-string">"top_products_by_revenue"</span>
+<span class="hljs-attr">input_query:</span> <span class="hljs-string">"What are the top 3 products by total revenue?"</span>
+<span class="hljs-attr">expected_tool_sequence:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">"execute_python"</span>  <span class="hljs-comment"># Load and inspect data</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">"execute_python"</span>  <span class="hljs-comment"># Aggregate and compute</span>
+<span class="hljs-attr">expected_output_contains:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">"top 3 products"</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-string">"revenue"</span>
+<span class="hljs-attr">max_acceptable_loops:</span> <span class="hljs-number">5</span>
+<span class="hljs-attr">max_acceptable_tokens:</span> <span class="hljs-number">50000</span>
+</div></code></pre>
+<p>Run these as regression tests on every PR that touches prompts, tool schemas, or loop logic.</p>
+<h3 id="%F0%9F%93%8A-82-key-evaluation-metrics">📊 8.2 Key Evaluation Metrics</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Metric</th>
+<th style="text-align:left">Formula</th>
+<th style="text-align:left">Target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Task Completion Rate</strong></td>
+<td style="text-align:left">Correct finals / Total test cases</td>
+<td style="text-align:left">&gt; 90%</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Avg Loop Count</strong></td>
+<td style="text-align:left">Mean steps to completion</td>
+<td style="text-align:left">&lt; 5 for simple tasks</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Cost per Task</strong></td>
+<td style="text-align:left">Total tokens × price per token</td>
+<td style="text-align:left">Within budget</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Error Recovery Rate</strong></td>
+<td style="text-align:left">Self-corrected errors / Total errors</td>
+<td style="text-align:left">&gt; 70%</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Hallucination Rate</strong></td>
+<td style="text-align:left">Turns with invalid tools / Total turns</td>
+<td style="text-align:left">&lt; 2%</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>p95 Latency</strong></td>
+<td style="text-align:left">95th percentile end-to-end time</td>
+<td style="text-align:left">&lt; 60s for interactive</td>
+</tr>
+</tbody>
+</table>
+<h3 id="%F0%9F%91%A8%E2%80%8D%E2%9A%96%EF%B8%8F-83-llm-as-judge-evaluation">👨‍⚖️ 8.3 LLM-as-Judge Evaluation</h3>
+<p>Use a separate evaluator LLM to score agent outputs against rubrics:</p>
+<pre class="hljs"><code><div>JUDGE_PROMPT = <span class="hljs-string">"""
+You are an evaluation judge. Score the following agent output on a 1-5 scale for:
+1. Correctness: Does the answer match the ground truth?
+2. Completeness: Are all parts of the question addressed?
+3. Efficiency: Did the agent use a reasonable number of steps?
+
+Agent Output: {agent_output}
+Ground Truth: {expected_output}
+Steps Taken: {loop_count}
+
+Return JSON: {"correctness": int, "completeness": int, "efficiency": int, "reasoning": str}
+"""</span>
+</div></code></pre>
+<h3 id="%F0%9F%94%84-84-regression-ci-pipeline">🔄 8.4 Regression CI Pipeline</h3>
+<pre class="hljs"><code><div>PR Opened (touches prompts/ or tools/ or agent loop)
+    │
+    ├── Run Golden Trajectory Suite
+    │   ├── All tests pass → ✅ Merge allowed
+    │   └── Regression detected → ❌ Block + report diff
+    │
+    └── Run Cost Benchmark
+        ├── Cost within 10% of baseline → ✅
+        └── Cost increased &gt; 10% → ⚠️ Flag for review
+</div></code></pre>
+<hr>
+<h2 id="%F0%9F%93%A1-9-streaming-real-time-ux--cancellation">📡 9. Streaming, Real-Time UX &amp; Cancellation</h2>
+<p>Enterprise agents often need to stream partial results to users for responsive UX, rather than blocking until the full ReAct loop completes.</p>
+<h3 id="91-token-streaming">9.1 Token Streaming</h3>
+<p>Stream LLM output tokens in real-time via SSE (Server-Sent Events) or WebSocket:</p>
+<pre class="hljs"><code><div><span class="hljs-keyword">async</span> <span class="hljs-function"><span class="hljs-keyword">def</span> <span class="hljs-title">stream_agent_response</span><span class="hljs-params">(agent, query, websocket)</span>:</span>
+    <span class="hljs-string">"""Stream agent reasoning and tool calls to the client in real-time."""</span>
+    <span class="hljs-keyword">async</span> <span class="hljs-keyword">for</span> event <span class="hljs-keyword">in</span> agent.run_streaming(query):
+        match event.type:
+            case <span class="hljs-string">"reasoning"</span>:
+                <span class="hljs-keyword">await</span> websocket.send_json({<span class="hljs-string">"type"</span>: <span class="hljs-string">"thinking"</span>, <span class="hljs-string">"content"</span>: event.text})
+            case <span class="hljs-string">"tool_call"</span>:
+                <span class="hljs-keyword">await</span> websocket.send_json({<span class="hljs-string">"type"</span>: <span class="hljs-string">"tool_start"</span>, <span class="hljs-string">"tool"</span>: event.tool_name})
+            case <span class="hljs-string">"tool_result"</span>:
+                <span class="hljs-keyword">await</span> websocket.send_json({<span class="hljs-string">"type"</span>: <span class="hljs-string">"tool_done"</span>, <span class="hljs-string">"result"</span>: event.summary})
+            case <span class="hljs-string">"final_answer"</span>:
+                <span class="hljs-keyword">await</span> websocket.send_json({<span class="hljs-string">"type"</span>: <span class="hljs-string">"answer"</span>, <span class="hljs-string">"content"</span>: event.text})
+</div></code></pre>
+<h3 id="92-progress-signals">9.2 Progress Signals</h3>
+<p>Emit structured progress events during long tool executions so the frontend can display progress indicators:</p>
+<pre class="hljs"><code><div>{<span class="hljs-attr">"type"</span>: <span class="hljs-string">"progress"</span>, <span class="hljs-attr">"step"</span>: <span class="hljs-number">3</span>, <span class="hljs-attr">"total_steps"</span>: <span class="hljs-number">7</span>, <span class="hljs-attr">"status"</span>: <span class="hljs-string">"executing_sql"</span>, <span class="hljs-attr">"elapsed_sec"</span>: <span class="hljs-number">12</span>}
+</div></code></pre>
+<h3 id="93-cancellation">9.3 Cancellation</h3>
+<p>Users must be able to cancel a running agent loop mid-execution:</p>
+<ul>
+<li>The control loop must check for a cancellation signal (e.g., a shared flag or event) at the start of each iteration.</li>
+<li>In-flight tool executions should be interruptible (use <code>asyncio.Task.cancel()</code> or process signals).</li>
+<li>Upon cancellation, persist the current checkpoint so the session can potentially be resumed later.</li>
+</ul>
+<hr>
+<h2 id="%F0%9F%9A%80-10-deployment-scaling--operations">🚀 10. Deployment, Scaling &amp; Operations</h2>
+<p>The guide cannot end at &quot;write code.&quot; Enterprise agents must be deployed, scaled, monitored, and maintained.</p>
+<h3 id="101-containerization">10.1 Containerization</h3>
+<ul>
+<li>Dockerize the agent runtime. Pin all dependencies with exact versions.</li>
+<li>Use multi-stage builds to keep the production image small.</li>
+<li>Separate the agent container from the tool sandbox container for security isolation.</li>
+</ul>
+<h3 id="102-scaling">10.2 Scaling</h3>
+<p>Agent workloads are inherently <strong>bursty</strong> and <strong>long-running</strong> (a single request can take 30+ seconds across multiple LLM calls). Traditional request-per-second scaling doesn't apply.</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Pattern</th>
+<th style="text-align:left">Mechanism</th>
+<th style="text-align:left">Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left"><strong>Task Queue</strong></td>
+<td style="text-align:left">Celery, Cloud Tasks, BullMQ</td>
+<td style="text-align:left">Async processing; one worker per agent session</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Horizontal Pod Autoscaler</strong></td>
+<td style="text-align:left">Scale worker pods based on queue depth</td>
+<td style="text-align:left">Kubernetes deployments</td>
+</tr>
+<tr>
+<td style="text-align:left"><strong>Serverless Functions</strong></td>
+<td style="text-align:left">AWS Lambda, Cloud Functions</td>
+<td style="text-align:left">Short-lived, simple agents (&lt; 15 min timeout)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="103-blue-green--canary-deployments">10.3 Blue-Green &amp; Canary Deployments</h3>
+<p>Never roll out prompt or tool changes to 100% of traffic at once:</p>
+<ul>
+<li><strong>Canary Deploy</strong>: Route 5% of traffic to the new version. Monitor completion rate, error rate, and cost for 1 hour before expanding.</li>
+<li><strong>Blue-Green</strong>: Maintain two identical environments. Switch traffic atomically after validation.</li>
+<li><strong>Feature Flags</strong>: Use feature flags to toggle new tools or prompt versions per user/tenant.</li>
+</ul>
+<h3 id="104-health-checks--alerting">10.4 Health Checks &amp; Alerting</h3>
+<table>
+<thead>
+<tr>
+<th style="text-align:left">Monitor</th>
+<th style="text-align:left">Threshold</th>
+<th style="text-align:left">Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left">Task completion rate</td>
+<td style="text-align:left">Drops below 85%</td>
+<td style="text-align:left">PagerDuty alert</td>
+</tr>
+<tr>
+<td style="text-align:left">p95 latency</td>
+<td style="text-align:left">Exceeds 120s</td>
+<td style="text-align:left">Investigate provider issues</td>
+</tr>
+<tr>
+<td style="text-align:left">Error rate</td>
+<td style="text-align:left">Exceeds 10%</td>
+<td style="text-align:left">Circuit breaker; fallback provider</td>
+</tr>
+<tr>
+<td style="text-align:left">Daily cost</td>
+<td style="text-align:left">Exceeds budget by 20%</td>
+<td style="text-align:left">Alert + review high-cost sessions</td>
+</tr>
+<tr>
+<td style="text-align:left">Checkpoint age</td>
+<td style="text-align:left">Stale &gt; 5 min without progress</td>
+<td style="text-align:left">Kill and retry session</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="%F0%9F%97%BA%EF%B8%8F-11-step-by-step-implementation-roadmap">🗺️ 11. Step-by-Step Implementation Roadmap</h2>
+<p>Follow this 10-step roadmap to build an agent from design to production:</p>
+<pre class="hljs"><code><div>Phase 1: Foundation
+  Step 1: Define Scope ──► Step 2: LLM Abstraction ──► Step 3: Tool Design
+
+Phase 2: Core Loop
+  Step 4: ReAct Loop ──► Step 5: Error Handling &amp; Retry ──► Step 6: Config &amp; SOPs
+
+Phase 3: Production Hardening
+  Step 7: Memory &amp; Checkpoints ──► Step 8: Observability
+
+Phase 4: Scale
+  Step 9: Multi-Agent (if needed) ──► Step 10: Deploy, Test &amp; Monitor
+</div></code></pre>
+<h3 id="step-1-define-problem-scope--workflow-pattern">Step 1: Define Problem Scope &amp; Workflow Pattern</h3>
+<ul>
+<li>Decide: ReAct (exploration) vs. FSM (deterministic) vs. Multi-Agent (complex).</li>
+<li>Define inputs, outputs, allowed tools, and success criteria.</li>
+<li>Ask: &quot;Does this even need an agent?&quot; (see §1.2 decision matrix).</li>
+</ul>
+<h3 id="step-2-build-the-provider-agnostic-llm-interface">Step 2: Build the Provider-Agnostic LLM Interface</h3>
+<ul>
+<li>Implement <code>BaseLLMClient</code> that normalizes requests across providers.</li>
+<li>Include retry with exponential backoff built into the client.</li>
+</ul>
+<h3 id="step-3-design-schema-enforced-tools">Step 3: Design Schema-Enforced Tools</h3>
+<ul>
+<li>Define tool schemas using Pydantic models.</li>
+<li>Tag each tool with <code>idempotent: true/false</code>.</li>
+<li>Implement execution wrappers with strict timeouts.</li>
+</ul>
+<h3 id="step-4-construct-the-bounded-react-control-loop">Step 4: Construct the Bounded ReAct Control Loop</h3>
+<ul>
+<li>Build the core loop with hard <code>max_loops</code> threshold.</li>
+<li>Handle parallel tool calls, final answer detection, and observation feedback.</li>
+</ul>
+<h3 id="step-5-implement-error-taxonomy--escalation">Step 5: Implement Error Taxonomy &amp; Escalation</h3>
+<ul>
+<li>Classify errors into transient, semantic, logical, and fatal.</li>
+<li>Wire up retry handlers, HITL triggers, and abort mechanisms.</li>
+</ul>
+<h3 id="step-6-externalize-configuration--sops">Step 6: Externalize Configuration &amp; SOPs</h3>
+<ul>
+<li>Create <code>spec.yaml</code> for all parameterizable settings.</li>
+<li>Store prompts and SOPs as external versioned files.</li>
+<li>Implement dynamic SOP routing.</li>
+</ul>
+<h3 id="step-7-add-memory-state-checkpointing--context-pruning">Step 7: Add Memory, State Checkpointing &amp; Context Pruning</h3>
+<ul>
+<li>Persist state after each turn for crash recovery.</li>
+<li>Implement context pruning when token limits approach.</li>
+</ul>
+<h3 id="step-8-instrument-observability">Step 8: Instrument Observability</h3>
+<ul>
+<li>Implement dual-transcript logging.</li>
+<li>Add per-turn token counting and cost tracking.</li>
+<li>Set up structured audit logs.</li>
+</ul>
+<h3 id="step-9-implement-multi-agent-orchestration-if-complexity-warrants">Step 9: Implement Multi-Agent Orchestration (if complexity warrants)</h3>
+<ul>
+<li>Design delegation protocol and message schemas.</li>
+<li>Implement result aggregation and failure propagation.</li>
+<li>Define context isolation boundaries.</li>
+</ul>
+<h3 id="step-10-deploy-test--monitor">Step 10: Deploy, Test &amp; Monitor</h3>
+<ul>
+<li>Containerize and deploy to staging.</li>
+<li>Run golden trajectory test suite.</li>
+<li>Set up canary deployments and health monitoring.</li>
+<li>Establish cost governance dashboards.</li>
+</ul>
+<hr>
+<h2 id="%F0%9F%93%81-12-workspace-reference-existing-code-alignment">📁 12. Workspace Reference (Existing Code Alignment)</h2>
+<p>Our workspace implementation provides concrete examples of these architectural concepts:</p>
+<ol>
+<li>
+<p><strong>Provider-Agnostic LLM Engine</strong>:</p>
+<ul>
+<li>Implemented in [core/llm_clients.py](file:///home/navin/work/AI/projects/Agents/core/llm_clients.py). Demonstrates multi-provider support (Anthropic and Hugging Face) with context pruning.</li>
+</ul>
+</li>
+<li>
+<p><strong>Declarative Specification</strong>:</p>
+<ul>
+<li>Implemented in [data_analyst/spec.yaml](file:///home/navin/work/AI/projects/Agents/data_analyst/spec.yaml). Demonstrates YAML-based agent parameterization.</li>
+</ul>
+</li>
+<li>
+<p><strong>ReAct Control Loop &amp; Execution</strong>:</p>
+<ul>
+<li>Implemented in [data_analyst/agent.py](file:///home/navin/work/AI/projects/Agents/data_analyst/agent.py). Demonstrates a bounded ReAct loop with tool dispatching.</li>
+</ul>
+</li>
+<li>
+<p><strong>Subprocess Tool Execution</strong>:</p>
+<ul>
+<li>Implemented in [data_analyst/executor.py](file:///home/navin/work/AI/projects/Agents/data_analyst/executor.py). Demonstrates isolated code execution with plot interception and timeouts.</li>
+</ul>
+</li>
+<li>
+<p><strong>Declarative SOP Workflows</strong>:</p>
+<ul>
+<li>Implemented in [data_analyst/sops/](file:///home/navin/work/AI/projects/Agents/data_analyst/sops/) and routed via [data_analyst/sops.py](file:///home/navin/work/AI/projects/Agents/data_analyst/sops.py).</li>
+</ul>
+</li>
+<li>
+<p><strong>Skills Ecosystem</strong>:</p>
+<ul>
+<li>Detailed specification in [skills_architecture.md](file:///home/navin/work/AI/projects/Agents/docs/skills_architecture.md). Demonstrates modular skill package loading and registration.</li>
+</ul>
+</li>
+<li>
+<p><strong>Design Patterns &amp; Lessons Learned</strong>:</p>
+<ul>
+<li>Industry patterns and reflective critique in [agentic_design_patterns.md](file:///home/navin/work/AI/projects/Agents/docs/agentic_design_patterns.md).</li>
+<li>Operational lessons in [lessons_learned.md](file:///home/navin/work/AI/projects/Agents/docs/lessons_learned.md).</li>
+<li>Development backlog in [backlog.md](file:///home/navin/work/AI/projects/Agents/docs/backlog.md).</li>
+</ul>
+</li>
+</ol>
+<hr>
+<h2 id="%F0%9F%94%AE-13-advanced-topics--future-roadmap">🔮 13. Advanced Topics &amp; Future Roadmap</h2>
+<p>The following are cutting-edge or specialized capabilities that extend beyond core and production-grade agent architecture. They represent the frontier of agentic AI research and should be considered for long-term roadmap planning rather than initial implementation.</p>
+<h3 id="%F0%9F%A7%A0-131-meta-cognition--confidence-estimation">🧠 13.1 Meta-Cognition &amp; Confidence Estimation</h3>
+<p>The agent's ability to reason about its own reasoning process — estimating how confident it is in an answer and adjusting behavior accordingly.</p>
+<ul>
+<li><strong>Confidence Scoring</strong>: After generating an answer, the agent assigns a confidence level (high / medium / low) based on the quality of evidence from tool observations.</li>
+<li><strong>Adaptive Behavior</strong>: Low confidence → seek more evidence (additional tool calls) or escalate to human review. High confidence → return answer directly.</li>
+<li><strong>Calibration</strong>: Track whether confidence scores correlate with actual correctness over time. Poorly calibrated confidence is worse than no confidence.</li>
+<li><strong>Use Case</strong>: High-stakes domains (medical, legal, financial) where knowing &quot;I'm not sure&quot; is as valuable as knowing the answer.</li>
+</ul>
+<h3 id="%F0%9F%8E%93-132-self-improving-agents-learning-from-trajectories">🎓 13.2 Self-Improving Agents (Learning from Trajectories)</h3>
+<p>Agents that get better over time by learning from their own past execution trajectories.</p>
+<ul>
+<li><strong>Few-Shot Example Mining</strong>: Identify successful past trajectories and use them as few-shot examples in future prompts for similar queries. The agent literally learns from its own history.</li>
+<li><strong>Trajectory Fine-Tuning</strong>: Collect high-quality agent trajectories (verified correct by humans or automated evaluation) and fine-tune the base model on them to improve domain-specific tool use and reasoning.</li>
+<li><strong>Reinforcement Learning from Human Feedback (RLHF) on Trajectories</strong>: Score complete agent runs (not just individual outputs) and use trajectory-level rewards to improve planning and tool selection.</li>
+<li><strong>Challenge</strong>: Requires robust evaluation infrastructure (§8) to distinguish good trajectories from bad ones. Without this, self-improvement can amplify errors.</li>
+</ul>
+<h3 id="%F0%9F%A4%9D-133-agent-to-agent-communication-standards">🤝 13.3 Agent-to-Agent Communication Standards</h3>
+<p>Formal inter-agent communication protocols that go beyond the basic delegation schema described in §6.2.</p>
+<ul>
+<li><strong>Shared Ontologies</strong>: Agents agree on common data schemas and terminology so outputs from Agent A can be directly consumed by Agent B without translation.</li>
+<li><strong>Negotiation Protocols</strong>: Agents that can negotiate resource allocation, task priority, or conflicting recommendations (e.g., two analyst agents disagree on a metric).</li>
+<li><strong>Standardized Message Envelopes</strong>: Common headers (sender, receiver, correlation_id, priority, ttl) wrapping domain-specific payloads for heterogeneous multi-agent ecosystems.</li>
+<li><strong>Relevance</strong>: Becomes important when building platforms where different teams contribute independent agents that must interoperate.</li>
+</ul>
+<h3 id="%F0%9F%94%92-134-formal-safety-verification">🔒 13.4 Formal Safety Verification</h3>
+<p>Mathematical guarantees on agent behavior boundaries — proving that an agent <em>cannot</em> violate certain constraints under any possible input.</p>
+<ul>
+<li><strong>Resource Bounding Proofs</strong>: Formal verification that the agent cannot exceed N tool calls, M tokens, or T seconds regardless of LLM output.</li>
+<li><strong>Access Control Proofs</strong>: Verification that the agent's tool permissions are enforced at the infrastructure level (not just the prompt level) and cannot be bypassed through prompt injection.</li>
+<li><strong>State Machine Verification</strong>: For FSM/DAG agents, verify that all state transitions are valid and no unreachable or deadlocked states exist.</li>
+<li><strong>Current Limitation</strong>: Formal verification of LLM-based agents is an active research area with limited practical tooling. Most production systems rely on empirical testing (§8) and runtime guardrails (§5.5) instead.</li>
+</ul>
+<h3 id="%F0%9F%9B%92-135-agent-marketplaces--plugin-ecosystems">🛒 13.5 Agent Marketplaces &amp; Plugin Ecosystems</h3>
+<p>Standardized packaging, distribution, and discovery of agent skills and plugins.</p>
+<ul>
+<li><strong>Skill Packaging Standard</strong>: Define a universal skill package format (similar to npm packages or VS Code extensions) with manifest, code, tests, and documentation.</li>
+<li><strong>Discovery &amp; Installation</strong>: Agents or platform operators can browse, install, and configure skills from a registry.</li>
+<li><strong>Trust &amp; Reputation</strong>: Skill packages carry trust scores based on author verification, usage statistics, and automated safety audits.</li>
+<li><strong>Versioning &amp; Compatibility</strong>: Semantic versioning for skills with dependency management and backward compatibility guarantees.</li>
+<li><strong>Analogy</strong>: Think of OpenAI's GPT Store, but for modular agent capabilities that can be composed into custom agent configurations.</li>
+</ul>
+<h3 id="%F0%9F%8C%90-136-federated--cross-organization-agents">🌐 13.6 Federated &amp; Cross-Organization Agents</h3>
+<p>Agents that operate across organizational boundaries with different trust levels, data governance policies, and compliance requirements.</p>
+<ul>
+<li><strong>Cross-Tenant Data Isolation</strong>: Agent can query data from Organization A and Organization B without either party seeing the other's raw data. Only aggregated or approved results cross boundaries.</li>
+<li><strong>Federated Execution</strong>: Sub-tasks are delegated to agents running within each organization's infrastructure. Results are aggregated by a neutral orchestrator.</li>
+<li><strong>Compliance-Aware Routing</strong>: The orchestrator understands data residency requirements (e.g., EU data must be processed within EU) and routes sub-tasks accordingly.</li>
+<li><strong>Use Cases</strong>: Supply chain optimization (multi-vendor), consortium analytics (multi-bank), cross-departmental enterprise workflows.</li>
+</ul>
+
+</body>
+</html>

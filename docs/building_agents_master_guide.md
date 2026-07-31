@@ -1,14 +1,14 @@
-# Building Autonomous AI Agents: Architecture, Parameterization, and Implementation Master Guide
+# 📘 Building Autonomous AI Agents: Architecture, Parameterization, and Implementation Master Guide
 
-This document is a comprehensive, production-grade guide for designing, parameterizing, and building autonomous AI agents — from minimal prototypes to complex, enterprise-scale agentic systems. It spans fundamental paradigms, minimal architectures, deep architectural facets, multi-agent orchestration, evaluation frameworks, and deployment operations.
+> **Enterprise Blueprint** for designing, parameterizing, and implementing autonomous AI agents — from minimal prototypes to production-grade, multi-agent systems.
 
 ---
 
-## 1. Foundations: What is an Agent & When (Not) to Use One
+## 🏗️ 1. Foundations: What is an Agent & When (Not) to Use One
 
-### 1.1 Definition
+### 🎯 1.1 Definition
 
-An **AI Agent** is an autonomous system that uses a Cognitive Engine (LLM) to perceive environment state, reason about goals, execute tools/actions, observe results, and iterate until an objective is achieved.
+An **AI Agent** is an autonomous system that uses a **Cognitive Engine (LLM)** to perceive environment state, reason about goals, execute tools/actions, observe results, and iterate dynamically until an objective is achieved.
 
 ```
        ┌─────────────────────────────────────────────────────────┐
@@ -32,31 +32,33 @@ An **AI Agent** is an autonomous system that uses a Cognitive Engine (LLM) to pe
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-### 1.2 When to Use an Agent vs. Simpler Alternatives
+### 🚦 1.2 When to Use an Agent vs. Simpler Alternatives
 
-Not every LLM-powered feature needs an agent. Over-engineering with agents when a simpler solution suffices wastes cost, adds latency, and increases failure surface.
+Not every LLM feature requires an agent loop. Over-engineering with agents when a simpler solution suffices wastes API budget, adds multi-turn latency, and expands the failure surface.
 
 **Decision Matrix: Input Complexity × Output Determinism**
 
-| | **Deterministic Output** | **Open-Ended Output** |
+| Input / Task Scope | **Deterministic Output** | **Open-Ended Output** |
 | :--- | :--- | :--- |
-| **Single-Step Input** | ❌ **Single LLM Call** (classification, extraction, summarization) | ❌ **Single LLM Call** with structured output schema |
-| **Multi-Step Input** (requires tool use, iteration) | ✅ **FSM/DAG Agent** (deterministic pipeline) | ✅ **ReAct Agent** (exploratory reasoning) |
-| **Multi-Domain / Large Scope** | ✅ **Multi-Agent System** (delegated specialists) | ✅ **Multi-Agent System** with planner |
+| **Single-Step Input** | ❌ **Single LLM Call** *(classification, extraction)* | ❌ **Single LLM Call** *(structured JSON output)* |
+| **Multi-Step Input** *(tool execution)* | ✅ **FSM / DAG Agent** *(deterministic pipeline)* | ✅ **ReAct Agent** *(exploratory reasoning)* |
+| **Multi-Domain Scope** | ✅ **Multi-Agent System** *(specialized workers)* | ✅ **Multi-Agent System** *(planner + workers)* |
 
-**Use an Agent when**:
-- The task requires iterative multi-step reasoning.
-- The agent must select from and invoke multiple tools dynamically.
-- The execution plan cannot be fully known in advance (the LLM must adapt based on intermediate results).
+> [!TIP]
+> **Use an Agent when**:
+> - The task requires **iterative, multi-step reasoning**.
+> - The model must dynamically **select and execute from multiple tools**.
+> - The complete execution path **cannot be pre-determined**.
 
-**Don't use an Agent when**:
-- The task is a single classification, extraction, or transformation — a single structured LLM call with a JSON schema is cheaper, faster, and more reliable.
-- The workflow is fully deterministic and pre-known — use a traditional pipeline or rule-based system.
-- Latency requirements are sub-second — agent loops introduce multi-turn latency.
+> [!WARNING]
+> **Don't use an Agent when**:
+> - The task is a single classification, extraction, or transformation — use a **single structured LLM call**.
+> - The workflow sequence is 100% deterministic and pre-known — use a **standard code pipeline**.
+> - Latency requirements are **sub-second** — agent loops introduce multi-turn latency.
 
 ---
 
-## 2. Architecture Spectrum: ReAct vs. FSM vs. Multi-Agent
+## 📐 2. Architecture Spectrum: ReAct vs. FSM vs. Multi-Agent
 
 ```mermaid
 flowchart LR
@@ -69,27 +71,27 @@ flowchart LR
     D --> D1["Complex Specialization\n(Planner + Worker + Evaluator)"]
 ```
 
-### 2.1 ReAct (Reasoning and Acting)
-- **Mechanism**: An iterative `while` loop where the LLM produces thoughts and tool invocations, receives tool execution feedback (observations), and updates its internal plan dynamically.
-- **Best For**: Exploratory tasks, data analysis, software debugging, complex problem solving.
+### 🔄 2.1 ReAct (Reasoning and Acting)
+- **Mechanism**: An iterative `while` loop where the LLM produces thoughts and tool invocations, receives execution feedback (*observations*), and updates its plan dynamically.
+- **Best For**: Exploratory data analysis, software debugging, complex multi-step reasoning.
 - **Tradeoff**: Maximum flexibility, but highest risk of runaway loops and token burn.
 
-### 2.2 Finite State Machines (FSMs) & Directed Acyclic Graphs (DAGs)
-- **Mechanism**: Control flow is hardcoded into state nodes. The developer designs the graph; the LLM evaluates specific transitions or extracts structured outputs within nodes. Frameworks like **LangGraph** or **AutoGen** formalize this.
-- **Best For**: Highly regulated, deterministic business processes (e.g., invoice processing, KYC validation).
-- **Tradeoff**: Highly predictable, but brittle to novel edge cases the graph designer didn't anticipate.
+### ⚙️ 2.2 Finite State Machines (FSMs) & Directed Acyclic Graphs (DAGs)
+- **Mechanism**: Control flow is hardcoded into graph nodes (*LangGraph / AutoGen*). The developer designs the graph; the LLM evaluates specific node transitions or extracts structured outputs.
+- **Best For**: Highly regulated, deterministic business processes (*e.g., invoice processing, KYC validation*).
+- **Tradeoff**: Highly predictable, but brittle to unhandled edge cases.
 
-### 2.3 Multi-Agent Orchestration
-- **Mechanism**: Specialized agents (e.g., Planner, Coder, Reviewer) delegate tasks to one another via structured message passing. Each agent has its own context window, tools, and system prompt.
-- **Best For**: Large-scope tasks where context isolation prevents context-window bloat and where different sub-tasks benefit from specialized instructions.
-- **Tradeoff**: Powerful decomposition, but introduces coordination complexity, failure propagation, and inter-agent communication overhead.
+### 🌐 2.3 Multi-Agent Orchestration
+- **Mechanism**: Specialized agents (*e.g., Planner, Coder, Reviewer*) delegate sub-tasks to one another via structured message passing. Each agent maintains its own context window, prompt, and tool set.
+- **Best For**: Large-scope tasks where context window isolation prevents context bloat and specialization improves output quality.
+- **Tradeoff**: High capability, but introduces coordination overhead and failure propagation complexity.
 
 > [!NOTE]
-> These patterns are not mutually exclusive. Enterprise systems often combine them: a **DAG orchestrator** routes to specialized **ReAct sub-agents**, each running in isolated context windows with dedicated tool sets.
+> These patterns are not mutually exclusive. Enterprise systems frequently combine them: a **DAG orchestrator** routes to specialized **ReAct sub-agents**, each running in isolated context windows with dedicated tool sets.
 
 ---
 
-## 3. The Simplest Agent Architecture (Minimal Blueprint)
+## ⚡ 3. The Simplest Agent Architecture (Minimal Blueprint)
 
 The simplest viable agent is a **Single-Loop ReAct Agent** written in pure Python. It requires zero complex frameworks and relies on four clean primitives:
 1. **System Prompt**: Defines persona and tool usage guidelines.
@@ -195,11 +197,11 @@ The minimal agent above is pedagogically clean but has gaps that will bite in pr
 
 ---
 
-## 4. Parameterization & Declarative Configuration
+## ⚙️ 4. Parameterization & Declarative Configuration
 
 To keep agent code modular, maintainable, and configurable across dev, staging, and production, decouple execution logic from agent metadata using a declarative YAML/JSON configuration spec.
 
-### 4.1 Parameterization Matrix
+### 📊 4.1 Parameterization Matrix
 
 | Category | Parameter Key | Example Values | Purpose |
 | :--- | :--- | :--- | :--- |
@@ -224,7 +226,7 @@ To keep agent code modular, maintainable, and configurable across dev, staging, 
 | **Cost Governance** | `session_token_budget` | `500000` | Hard cap on total tokens per session. |
 | | `model_tier_routing` | `{classify: "flash", reason: "opus"}` | Route cheap tasks to fast models. |
 
-### 4.2 Complete Declarative Specification Schema (`spec.yaml`)
+### 📜 4.2 Complete Declarative Specification Schema (`spec.yaml`)
 
 ```yaml
 agent:
@@ -280,7 +282,7 @@ cost:
 
 ---
 
-## 5. Deep Dive: Architectural Facets
+## 🔬 5. Deep Dive: Architectural Facets
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐
@@ -318,7 +320,7 @@ cost:
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 5.1 The Cognitive Brain (Model Abstraction & Prompt Caching)
+### 🧠 5.1 The Cognitive Brain (Model Abstraction & Prompt Caching)
 
 **Provider Agnosticism**: Abstract model providers behind a unified interface (`BaseLLMClient`). Application logic should never directly invoke vendor SDKs. This allows seamless failover from one provider to another (e.g., Anthropic → Hugging Face) without touching agent loop code.
 
@@ -340,7 +342,7 @@ cost:
 
 **Structured Outputs**: Never parse model output using custom regex or string splitting. Always rely on native API tool calling (function calling) or Pydantic/JSON schema enforcement at the API boundary. This guarantees structural validity and eliminates an entire class of parsing bugs.
 
-### 5.2 Control & Orchestration (Retry, Circuit Breakers, HITL)
+### 🔄 5.2 Control & Orchestration (Retry, Circuit Breakers, HITL)
 
 The control layer manages execution transitions, failure recovery, and human escalation.
 
@@ -382,7 +384,7 @@ Primary Provider (Anthropic)
 
 **Idempotency Considerations for Retries**: If a tool call is retried (e.g., due to a timeout where the result was lost), will it produce duplicate side effects? Tools tagged as `idempotent: false` (like `send_email`) must NOT be retried blindly — use deduplication tokens or skip-on-timeout strategies.
 
-### 5.3 Tool Design Patterns (Schemas, Idempotency, Output Contracts)
+### 🔧 5.3 Tool Design Patterns (Schemas, Idempotency, Output Contracts)
 
 Tools are the agent's hands. Bad tool design produces bad agents regardless of model quality.
 
@@ -449,7 +451,7 @@ Static Tool Registry (Traditional)          Dynamic Tool Discovery (MCP)
   - *Static Registry*: Small, stable tool sets where you control all integrations (e.g., early development, single-purpose agents).
   - *Dynamic Discovery (MCP)*: Growing tool ecosystems, multi-tenant platforms, or when external teams provide tool servers independently.
 
-### 5.4 Memory, Context & State Hydration
+### 💾 5.4 Memory, Context & State Hydration
 
 **Short-Term History**: The conversation thread (system prompt + user query + assistant turns + tool results) maintained directly in the LLM context window.
 
@@ -491,7 +493,7 @@ If the process crashes or encounters a network partition, the agent rehydrates i
 - **Update**: After each session, extract and persist new learnings (user corrections, preferences, domain facts).
 - **Decay & Relevance**: Implement recency weighting or explicit expiration to prevent stale memories from polluting future sessions.
 
-### 5.5 Error Taxonomy & Escalation Ladder
+### 🚨 5.5 Error Taxonomy & Escalation Ladder
 
 Without classifying errors and mapping each class to a handler strategy, agents fail unpredictably in production. Define a clear taxonomy:
 
@@ -547,7 +549,7 @@ class EscalationLadder:
         return "semantic"  # Default: let LLM try to recover
 ```
 
-### 5.6 Security, Auth, Multi-Tenancy & Cost Governance
+### 🔒 5.6 Security, Auth, Multi-Tenancy & Cost Governance
 
 #### Authentication & Authorization
 
@@ -592,7 +594,7 @@ User query → Intent Classifier (cheap model: Flash/Haiku)
                 └── Complex reasoning → ReAct loop (expensive model: Opus/o1)
 ```
 
-### 5.7 Observability, Tracing & Dual Transcripts
+### 👁️ 5.7 Observability, Tracing & Dual Transcripts
 
 Maintain a **Dual-Transcript Strategy** for debugging and trajectory analysis:
 
@@ -621,7 +623,7 @@ Maintain a **Dual-Transcript Strategy** for debugging and trajectory analysis:
 
 **Recommended Instrumentation Libraries**: OpenTelemetry for general tracing; Arize Phoenix, Langfuse, or Braintrust for LLM-specific trajectory evaluation.
 
-### 5.8 Planning & Task Decomposition
+### 📋 5.8 Planning & Task Decomposition
 
 Before an agent starts executing tools, it should *plan*. Planning is a distinct cognitive step from reactive tool-calling. Without planning, agents wander — they try random tools, backtrack, and waste loops. Planning is what separates a competent agent from a brute-force tool-caller.
 
@@ -676,7 +678,7 @@ Pattern C: Pure ReAct (No Explicit Plan)
 - A numbered checklist the agent updates via a `manage_checklist` tool (explicit grounding).
 - An internal chain-of-thought the agent writes before each action (implicit planning).
 
-### 5.9 Reflection & Self-Critique
+### 🔍 5.9 Reflection & Self-Critique
 
 Reflection is the ability for an agent to **evaluate its own output before returning it** to the user. Without reflection, agents confidently return wrong or incomplete answers.
 
@@ -714,7 +716,7 @@ Reflection is the ability for an agent to **evaluate its own output before retur
 - Latency-critical applications where extra LLM calls are unacceptable.
 - When the agent's tools already provide verified outputs (e.g., SQL query results are inherently accurate if the query is correct).
 
-### 5.10 Input Processing & Intent Routing
+### 🚦 5.10 Input Processing & Intent Routing
 
 Before the ReAct loop begins, there is typically a **classification and routing layer** that determines how the incoming request should be handled. This is the agent's "front door" — getting routing wrong means either wasting resources on simple queries or under-serving complex ones.
 
@@ -752,7 +754,7 @@ Before the ReAct loop begins, there is typically a **classification and routing 
 
 **Why This Matters**: In enterprise systems, 40–60% of incoming queries may be simple lookups or single-step tasks. Routing them through a full agent loop wastes 10–50× the tokens compared to a single LLM call.
 
-### 5.11 Output Validation & Response Guardrails
+### 🛡️ 5.11 Output Validation & Response Guardrails
 
 The agent's **final output** must pass through a validation gate before reaching the user. The guide's existing guardrails (§5.5, §5.6) focus on *input and loop safety*. This section covers *output safety* — the last line of defense.
 
@@ -792,7 +794,7 @@ Agent Final Answer
 > [!WARNING]
 > Output validation is non-negotiable for enterprise agents. A single PII leak or hallucinated financial number in a customer-facing agent can cause regulatory, legal, and reputational damage.
 
-### 5.12 Conversation Management & User Interaction Strategy
+### 💬 5.12 Conversation Management & User Interaction Strategy
 
 Real agents are not one-shot "query in → answer out" systems. They manage ongoing **multi-turn conversations** with users, requiring strategies for clarification, follow-ups, and corrections.
 
@@ -828,7 +830,7 @@ Ask for clarification ◄──── "Could you clarify whether you mean X or Y
 
 **Key Principle**: When in doubt, **state your assumption and proceed** rather than blocking with a question — unless the ambiguity could lead to irreversible actions (e.g., deleting data, sending emails). For irreversible actions, always confirm.
 
-### 5.13 Grounding & Knowledge Retrieval (RAG Integration)
+### 📚 5.13 Grounding & Knowledge Retrieval (RAG Integration)
 
 Enterprise agents must reason over **proprietary, domain-specific data** that is not in the LLM's training set. Without grounding, agents hallucinate domain facts.
 
@@ -874,11 +876,11 @@ def search_knowledge_base(query: str, top_k: int = 5) -> ToolResult:
 
 ---
 
-## 6. Multi-Agent Orchestration Deep Dive
+## 🌐 6. Multi-Agent Orchestration Deep Dive
 
 Multi-agent systems are the core differentiator between a single autonomous script and an enterprise-grade agentic platform. When tasks grow large enough that a single agent's context window, tool set, or reasoning scope becomes a bottleneck, you decompose into specialized agents.
 
-### 6.1 Orchestration Topologies
+### 🔀 6.1 Orchestration Topologies
 
 ```mermaid
 flowchart TD
@@ -909,7 +911,7 @@ flowchart TD
 | **Hierarchical** | Self-correcting systems (code → review → iterate) | High | Reviewer feeds back; planner re-plans |
 | **Peer-to-Peer** | Collaborative negotiation (debate, consensus) | Very High | Requires quorum or voting mechanisms |
 
-### 6.2 Delegation Protocol & Message Schema
+### ✉️ 6.2 Delegation Protocol & Message Schema
 
 When Agent A delegates a task to Agent B, the handoff must be structured to prevent ambiguity, context loss, and untracked work.
 
@@ -943,7 +945,7 @@ When Agent A delegates a task to Agent B, the handoff must be structured to prev
 }
 ```
 
-### 6.3 Result Aggregation Strategies
+### 🧩 6.3 Result Aggregation Strategies
 
 When multiple sub-agents return results, the orchestrator must synthesize them:
 
@@ -954,7 +956,7 @@ When multiple sub-agents return results, the orchestrator must synthesize them:
 | **LLM-as-Judge Synthesis** | A judge agent evaluates all sub-outputs and produces a unified answer | Complex analysis, conflicting findings |
 | **Schema Merge** | Combine structured outputs (e.g., merge DataFrames) | Data pipeline agents, parallel data processing |
 
-### 6.4 Failure Propagation & Recovery
+### ⚡ 6.4 Failure Propagation & Recovery
 
 When a sub-agent fails, the parent orchestrator must decide:
 
@@ -976,7 +978,7 @@ Sub-Agent Failure
         └── Abort entire workflow + alert + rollback
 ```
 
-### 6.5 Context Isolation vs. Sharing
+### 🔒 6.5 Context Isolation vs. Sharing
 
 | Mode | Mechanism | Tradeoff |
 | :--- | :--- | :--- |
@@ -986,7 +988,7 @@ Sub-Agent Failure
 
 ---
 
-## 7. Prompt Engineering, Versioning & A/B Testing
+## 📝 7. Prompt Engineering, Versioning & A/B Testing
 
 Prompt changes are the **most common source of regressions** in agent systems. A one-word change in the system prompt can cause a previously working agent to loop infinitely or skip steps.
 
@@ -1032,11 +1034,11 @@ Every prompt change must trigger the trajectory test suite (see §8). If a new p
 
 ---
 
-## 8. Evaluation, Testing & Trajectory Benchmarks
+## 📈 8. Evaluation, Testing & Trajectory Benchmarks
 
 You cannot ship or iterate an agent you cannot measure. Systematic evaluation is non-negotiable for enterprise agents.
 
-### 8.1 Golden Trajectory Tests
+### 🧪 8.1 Golden Trajectory Tests
 
 Pre-recorded test cases that define the expected behavior for known inputs:
 
@@ -1056,7 +1058,7 @@ max_acceptable_tokens: 50000
 
 Run these as regression tests on every PR that touches prompts, tool schemas, or loop logic.
 
-### 8.2 Key Evaluation Metrics
+### 📊 8.2 Key Evaluation Metrics
 
 | Metric | Formula | Target |
 | :--- | :--- | :--- |
@@ -1067,7 +1069,7 @@ Run these as regression tests on every PR that touches prompts, tool schemas, or
 | **Hallucination Rate** | Turns with invalid tools / Total turns | < 2% |
 | **p95 Latency** | 95th percentile end-to-end time | < 60s for interactive |
 
-### 8.3 LLM-as-Judge Evaluation
+### 👨‍⚖️ 8.3 LLM-as-Judge Evaluation
 
 Use a separate evaluator LLM to score agent outputs against rubrics:
 
@@ -1086,7 +1088,7 @@ Return JSON: {"correctness": int, "completeness": int, "efficiency": int, "reaso
 """
 ```
 
-### 8.4 Regression CI Pipeline
+### 🔄 8.4 Regression CI Pipeline
 
 ```
 PR Opened (touches prompts/ or tools/ or agent loop)
@@ -1102,7 +1104,7 @@ PR Opened (touches prompts/ or tools/ or agent loop)
 
 ---
 
-## 9. Streaming, Real-Time UX & Cancellation
+## 📡 9. Streaming, Real-Time UX & Cancellation
 
 Enterprise agents often need to stream partial results to users for responsive UX, rather than blocking until the full ReAct loop completes.
 
@@ -1142,7 +1144,7 @@ Users must be able to cancel a running agent loop mid-execution:
 
 ---
 
-## 10. Deployment, Scaling & Operations
+## 🚀 10. Deployment, Scaling & Operations
 
 The guide cannot end at "write code." Enterprise agents must be deployed, scaled, monitored, and maintained.
 
@@ -1181,7 +1183,7 @@ Never roll out prompt or tool changes to 100% of traffic at once:
 
 ---
 
-## 11. Step-by-Step Implementation Roadmap
+## 🗺️ 11. Step-by-Step Implementation Roadmap
 
 Follow this 10-step roadmap to build an agent from design to production:
 
@@ -1248,7 +1250,7 @@ Phase 4: Scale
 
 ---
 
-## 12. Workspace Reference (Existing Code Alignment)
+## 📁 12. Workspace Reference (Existing Code Alignment)
 
 Our workspace implementation provides concrete examples of these architectural concepts:
 
@@ -1275,13 +1277,17 @@ Our workspace implementation provides concrete examples of these architectural c
    - Operational lessons in [lessons_learned.md](file:///home/navin/work/AI/projects/Agents/docs/lessons_learned.md).
    - Development backlog in [backlog.md](file:///home/navin/work/AI/projects/Agents/docs/backlog.md).
 
+8. **Practical Design Checklist & Code Templates**:
+   - Practical decision matrix, QA audit, and architectural decision trees in [agent_design_and_implementation_checklist.md](file:///home/navin/work/AI/projects/Agents/docs/agent_design_and_implementation_checklist.md).
+   - Ready-to-use copy-paste system prompts, YAML specs, Pydantic tools, and core Python boilerplate in [agent_development_templates_and_snippets.md](file:///home/navin/work/AI/projects/Agents/docs/agent_development_templates_and_snippets.md).
+
 ---
 
-## 13. Advanced Topics & Future Roadmap
+## 🔮 13. Advanced Topics & Future Roadmap
 
 The following are cutting-edge or specialized capabilities that extend beyond core and production-grade agent architecture. They represent the frontier of agentic AI research and should be considered for long-term roadmap planning rather than initial implementation.
 
-### 13.1 Meta-Cognition & Confidence Estimation
+### 🧠 13.1 Meta-Cognition & Confidence Estimation
 
 The agent's ability to reason about its own reasoning process — estimating how confident it is in an answer and adjusting behavior accordingly.
 
@@ -1290,7 +1296,7 @@ The agent's ability to reason about its own reasoning process — estimating how
 - **Calibration**: Track whether confidence scores correlate with actual correctness over time. Poorly calibrated confidence is worse than no confidence.
 - **Use Case**: High-stakes domains (medical, legal, financial) where knowing "I'm not sure" is as valuable as knowing the answer.
 
-### 13.2 Self-Improving Agents (Learning from Trajectories)
+### 🎓 13.2 Self-Improving Agents (Learning from Trajectories)
 
 Agents that get better over time by learning from their own past execution trajectories.
 
@@ -1299,7 +1305,7 @@ Agents that get better over time by learning from their own past execution traje
 - **Reinforcement Learning from Human Feedback (RLHF) on Trajectories**: Score complete agent runs (not just individual outputs) and use trajectory-level rewards to improve planning and tool selection.
 - **Challenge**: Requires robust evaluation infrastructure (§8) to distinguish good trajectories from bad ones. Without this, self-improvement can amplify errors.
 
-### 13.3 Agent-to-Agent Communication Standards
+### 🤝 13.3 Agent-to-Agent Communication Standards
 
 Formal inter-agent communication protocols that go beyond the basic delegation schema described in §6.2.
 
@@ -1308,7 +1314,7 @@ Formal inter-agent communication protocols that go beyond the basic delegation s
 - **Standardized Message Envelopes**: Common headers (sender, receiver, correlation_id, priority, ttl) wrapping domain-specific payloads for heterogeneous multi-agent ecosystems.
 - **Relevance**: Becomes important when building platforms where different teams contribute independent agents that must interoperate.
 
-### 13.4 Formal Safety Verification
+### 🔒 13.4 Formal Safety Verification
 
 Mathematical guarantees on agent behavior boundaries — proving that an agent *cannot* violate certain constraints under any possible input.
 
@@ -1317,7 +1323,7 @@ Mathematical guarantees on agent behavior boundaries — proving that an agent *
 - **State Machine Verification**: For FSM/DAG agents, verify that all state transitions are valid and no unreachable or deadlocked states exist.
 - **Current Limitation**: Formal verification of LLM-based agents is an active research area with limited practical tooling. Most production systems rely on empirical testing (§8) and runtime guardrails (§5.5) instead.
 
-### 13.5 Agent Marketplaces & Plugin Ecosystems
+### 🛒 13.5 Agent Marketplaces & Plugin Ecosystems
 
 Standardized packaging, distribution, and discovery of agent skills and plugins.
 
@@ -1327,7 +1333,7 @@ Standardized packaging, distribution, and discovery of agent skills and plugins.
 - **Versioning & Compatibility**: Semantic versioning for skills with dependency management and backward compatibility guarantees.
 - **Analogy**: Think of OpenAI's GPT Store, but for modular agent capabilities that can be composed into custom agent configurations.
 
-### 13.6 Federated & Cross-Organization Agents
+### 🌐 13.6 Federated & Cross-Organization Agents
 
 Agents that operate across organizational boundaries with different trust levels, data governance policies, and compliance requirements.
 
