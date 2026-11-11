@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from contextlib import AsyncExitStack
 from typing import Any, Dict, List, Optional
 import anyio
@@ -34,8 +35,12 @@ class MCPServerConnection:
         if self.is_connected:
             return
 
+        cmd = self.config.command
+        if cmd in ("python", "python3") and sys.executable:
+            cmd = sys.executable
+
         params = StdioServerParameters(
-            command=self.config.command,
+            command=cmd,
             args=self.config.args,
             env=self.config.get_effective_env(),
             cwd=self.config.cwd,
@@ -44,7 +49,7 @@ class MCPServerConnection:
         logger.info(
             "Starting MCP server '%s' via subprocess: %s %s",
             self.name,
-            self.config.command,
+            cmd,
             " ".join(self.config.args),
         )
 

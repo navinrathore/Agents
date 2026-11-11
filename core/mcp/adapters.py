@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import concurrent.futures
 import logging
+import threading
 from typing import Any, Dict, List, Optional, Type
 from pydantic import BaseModel, Field, create_model
 from langchain_core.tools import StructuredTool
@@ -81,20 +82,26 @@ def format_mcp_result(result: mcp_types.CallToolResult) -> str:
     return combined
 
 
-def _run_sync(coro: Any) -> Any:
-    """Safely execute an asynchronous coroutine from a synchronous context."""
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
+_SYNC_LOOP: Optional[asyncio.AbstractEventLoop] = None
+_SYNC_THREAD: Optional[threading.Thread] = None
+_SYNC_LOCK = threading.Lock()
 
-    if loop and loop.is_running():
-        # Inside an existing running event loop; run via thread pool to prevent deadlock
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, coro)
-            return future.result()
-    else:
-        return asyncio.run(coro)
+
+def _get_sync_loop() -> asyncio.AbstractEventLoop:
+    global _SYNC_LOOP, _SYNC_THREAD
+    with _SYNC_LOCK:
+        if _SYNC_LOOP is None or not _SYNC_LOOP.is_running():
+            _SYNC_LOOP = asyncio.new_event_loop()
+            _SYNC_THREAD = threading.Thread(target=_SYNC_LOOP.run_forever, daemon=True)
+            _SYNC_THREAD.start()
+        return _SYNC_LOOP
+
+
+def _run_sync(coro: Any, timeout: float = 30.0) -> Any:
+    """Safely execute an asynchronous coroutine from any synchronous context without deadlock."""
+    loop = _get_sync_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result(timeout=timeout)
 
 
 def adapt_mcp_tool_to_langgraph(
