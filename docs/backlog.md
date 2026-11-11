@@ -53,4 +53,17 @@ The following items represent architectural improvements for the autonomous agen
 - [ ] **[OWASP LLM05] Supply Chain Vulnerabilities**: Add dependency scanning (e.g., Snyk/Dependabot), model vulnerability scanning, and secure sandbox execution (Docker/Firecracker VM) for all agent environments.
 - [ ] **[OWASP LLM09] Misinformation**: Implement RAG (Retrieval-Augmented Generation) grounding checks, factual consistency evaluators (LLM-as-Judge), and explicit confidence thresholds before taking high-stakes actions.
 
+### Group 10: Multi-Channel Remote Notification Gateway (`core/notifications.py`)
+- [ ] **Universal Notification Contracts**: Standardize `ReviewRequestPayload` and `NotificationAction` Pydantic models for cross-agent approval dispatch.
+- [ ] **Declarative Preference Router (`NotificationGateway`)**: Load user-preferred channels from `notification_config.yaml` or environment variables, supporting single-channel dispatch or multi-target broadcasting.
+- [ ] **Freeware Channel Adapters**:
+  - `ConsoleChannel`: Rich ANSI-colored terminal card rendering for local development.
+  - `MockChannel`: In-memory recording for 100% hermetic offline CI/CD test suites.
+  - `WebhookChannel`: HTTP POST dispatcher pushing JSON payloads to local FastAPI endpoints, n8n, or custom automation hooks.
+  - `TelegramChannel`: Free Telegram Bot API integration with inline keyboard callback buttons (`[Approve]`, `[Reject]`) for zero-cost mobile approvals.
+  - `SlackChannel`: Incoming Webhook / Block Kit interactive card dispatcher for free team workspaces.
+- [ ] **Future Commercial Adapters**:
+  - `WhatsAppChannel`: Plug-in adapter utilizing Twilio WhatsApp / Meta Cloud API (reusing identical payload & callback contracts validated on Telegram).
+
+
 
