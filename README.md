@@ -29,7 +29,10 @@ projects/Agents/
 │
 ├── core/                      # Shared framework abstractions & utilities
 │   ├── config.py              # YAML spec loader & validator
-│   ├── llm_clients.py         # Provider-agnostic LLM client (Anthropic & HF) & pruning
+│   ├── llm_clients.py         # Provider-agnostic LLM client (Anthropic, OpenAI & HF) & pruning
+│   ├── memory.py              # 3-Tier Agent Memory Manager (Working, Episodic, Semantic)
+│   ├── mcp/                   # Shared Model Context Protocol (FastMCP) client & adapters
+│   ├── notifications.py       # Multi-Channel Remote Notification Gateway (Telegram, Slack, Webhook, Mock)
 │   └── utils.py               # ExecutionTimer & RepetitionDetector
 │
 ├── data_analyst/              # Autonomous Data Analyst Agent
@@ -66,3 +69,12 @@ Keeps system prompts light by dynamically injecting specific standard operating 
 
 ### 4. Context Pruning for Long-Running Tasks (`core/llm_clients.py`)
 Maintains conversation continuity across extended ReAct loops by summarizing older conversation steps while preserving recent assistant turns intact when token thresholds are reached.
+
+## 🧠 3-Tier Agent Memory & State Management
+
+The framework provides an enterprise-grade 3-tier memory management engine in `core/memory.py`:
+- **L1 Working Memory (`WorkingMemory`)**: Task checklist (`add_task`, `complete_task`), mutable scratchpad, and execution frame.
+- **L2 Episodic Memory (`EpisodicBuffer`)**: Sliding-window conversational buffer with automated token bounding and micro-summarization.
+- **L3 Semantic Memory (`SemanticStore`)**: Persistent fact registry and user preference store.
+- **Checkpointing & Persistence**: Native `export_state()` and `import_state()` for serializing memory snapshots across turns and sessions.
+- **Verified Test Coverage**: Validated via `tests/test_agent_memory.py`.
