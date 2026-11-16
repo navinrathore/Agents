@@ -7,6 +7,7 @@ freeware defaults (Webhook, Telegram, Console, Mock).
 
 from abc import ABC, abstractmethod
 from enum import Enum
+import hashlib
 import html
 import json
 import logging
@@ -164,6 +165,60 @@ class WebhookChannel(BaseNotificationChannel):
             return False
 
 
+_THREAD_HASH_REGISTRY: dict[str, str] = {}
+
+
+def register_thread_hash(thread_id: str, hash_prefix: Optional[str] = None) -> str:
+    """Register thread_id in memory and return its SHA-256 hash prefix."""
+    full_hash = hashlib.sha256(thread_id.encode("utf-8")).hexdigest()
+    prefix = hash_prefix or full_hash[:16]
+    _THREAD_HASH_REGISTRY[prefix] = thread_id
+    _THREAD_HASH_REGISTRY[full_hash[:16]] = thread_id
+    return prefix
+
+
+def lookup_thread_by_hash(hash_prefix: str) -> Optional[str]:
+    """Look up a thread_id from the in-memory registry by its hash prefix."""
+    if hash_prefix in _THREAD_HASH_REGISTRY:
+        return _THREAD_HASH_REGISTRY[hash_prefix]
+    for key, tid in _THREAD_HASH_REGISTRY.items():
+        if key.startswith(hash_prefix) or hash_prefix.startswith(key):
+            return tid
+    return None
+
+
+def safe_utf8_truncate(text: str, max_bytes: int = 64) -> str:
+    """Truncate a string to at most max_bytes when UTF-8 encoded without corrupting multi-byte characters."""
+    encoded = text.encode("utf-8")
+    if len(encoded) <= max_bytes:
+        return text
+    return encoded[:max_bytes].decode("utf-8", errors="ignore")
+
+
+def encode_telegram_callback_data(
+    thread_id: str,
+    action_id: str,
+    max_bytes: int = 64,
+) -> str:
+    """Format and byte-bound callback_data for Telegram inline buttons (max 64 UTF-8 bytes).
+
+    If f"{thread_id}:{action_id}" fits within max_bytes, returns it as-is.
+    If it exceeds max_bytes, hashes the thread_id with SHA-256 to guarantee the action
+    is preserved without truncation (preventing logic inversion bugs).
+    """
+    raw = f"{thread_id}:{action_id}"
+    if len(raw.encode("utf-8")) <= max_bytes:
+        return raw
+
+    tid_hash = hashlib.sha256(thread_id.encode("utf-8")).hexdigest()[:16]
+    register_thread_hash(thread_id, tid_hash)
+    callback_data = f"h:{tid_hash}:{action_id}"
+
+    if len(callback_data.encode("utf-8")) <= max_bytes:
+        return callback_data
+    return safe_utf8_truncate(callback_data, max_bytes)
+
+
 class TelegramChannel(BaseNotificationChannel):
     """Telegram Bot API dispatcher with inline keyboard callback buttons.
 
@@ -209,10 +264,13 @@ class TelegramChannel(BaseNotificationChannel):
         inline_buttons: list[dict[str, str]] = []
         for action in payload.actions:
             icon = "✅ " if action.action_id == "approve" else ("❌ " if action.action_id == "reject" else "✏️ ")
-            callback_data = action.callback_payload or f"{payload.thread_id}:{action.action_id}"
+            if action.callback_payload:
+                callback_data = safe_utf8_truncate(action.callback_payload, 64)
+            else:
+                callback_data = encode_telegram_callback_data(payload.thread_id, action.action_id, 64)
             inline_buttons.append({
                 "text": f"{icon}{action.label}",
-                "callback_data": callback_data[:64],  # Telegram 64-byte callback_data limit
+                "callback_data": callback_data,
             })
 
         telegram_payload = {

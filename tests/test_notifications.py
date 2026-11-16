@@ -21,6 +21,9 @@ from core.notifications import (
     ReviewRequestPayload,
     TelegramChannel,
     WebhookChannel,
+    encode_telegram_callback_data,
+    lookup_thread_by_hash,
+    safe_utf8_truncate,
 )
 
 
@@ -259,6 +262,94 @@ def test_telegram_channel_html_escaping(mock_server):
     assert "<code>thread_&lt;danger&gt;&amp;_001</code>" in text
     assert "<b>Subject:</b>" in text
     assert "<i>" in text and "</i>" in text
+
+
+def test_safe_utf8_truncate():
+    """Verify safe_utf8_truncate strictly bounds UTF-8 bytes without splitting multibyte characters."""
+    # 1. Plain ASCII <= 64 bytes
+    assert safe_utf8_truncate("hello world", 64) == "hello world"
+
+    # 2. Plain ASCII > 64 bytes
+    long_ascii = "a" * 80
+    truncated_ascii = safe_utf8_truncate(long_ascii, 64)
+    assert len(truncated_ascii.encode("utf-8")) == 64
+    assert truncated_ascii == "a" * 64
+
+    # 3. Multibyte characters (e.g. 4-byte emoji 🚀)
+    # 15 emojis * 4 bytes = 60 bytes. 16 emojis = 64 bytes.
+    emojis = "🚀" * 20  # 80 bytes
+    truncated_emoji = safe_utf8_truncate(emojis, 64)
+    assert len(truncated_emoji.encode("utf-8")) <= 64
+    assert len(truncated_emoji.encode("utf-8")) % 4 == 0  # No partial emoji
+    assert truncated_emoji == "🚀" * 16
+
+    # 4. Multibyte with awkward boundary
+    # 'a' * 62 (62 bytes) + '🚀' (4 bytes) = 66 bytes
+    awkward = ("a" * 62) + "🚀"
+    res = safe_utf8_truncate(awkward, 64)
+    assert len(res.encode("utf-8")) == 62
+    assert res == "a" * 62
+
+
+def test_encode_telegram_callback_data_and_registry():
+    """Verify callback_data preserves action without truncation or logic inversion."""
+    # 1. Short thread fits within 64 bytes as f"{thread}:{action}"
+    short_tid = "thread_short_01"
+    res_short = encode_telegram_callback_data(short_tid, "approve", 64)
+    assert res_short == f"{short_tid}:approve"
+    assert len(res_short.encode("utf-8")) <= 64
+
+    # 2. Long thread (>64 bytes) uses SHA-256 digest prefix 'h:{hash}:{action}'
+    long_tid = "thread_enterprise_security_compliance_audit_2026_q4_defense_in_depth_policy"
+    res_long = encode_telegram_callback_data(long_tid, "approve", 64)
+    assert res_long.startswith("h:")
+    assert res_long.endswith(":approve")
+    assert len(res_long.encode("utf-8")) <= 64
+
+    # 3. Original thread is recoverable from registry
+    hash_slice = res_long.split(":")[1]
+    recovered = lookup_thread_by_hash(hash_slice)
+    assert recovered == long_tid
+
+
+def test_telegram_channel_long_thread_hashing(mock_server):
+    """Verify TelegramChannel generates bounded callback_data with intact action for long thread IDs."""
+    server, port = mock_server
+    telegram_ch = TelegramChannel(
+        bot_token="test_token",
+        chat_id="chat_123",
+        api_base=f"http://127.0.0.1:{port}",
+    )
+
+    long_tid = "thread_enterprise_security_compliance_audit_2026_q4_defense_in_depth_policy_extended"
+    payload = ReviewRequestPayload(
+        thread_id=long_tid,
+        title="Long Thread Compliance Review",
+        summary="Testing callback data hashing",
+        actions=[
+            NotificationAction(action_id="approve", label="Approve", style=NotificationActionStyle.PRIMARY),
+            NotificationAction(action_id="reject", label="Reject", style=NotificationActionStyle.DANGER),
+        ],
+    )
+
+    assert telegram_ch.send(payload) is True
+    assert len(server.received_requests) == 1
+
+    body = server.received_requests[0]["body"]
+    keyboard = body["reply_markup"]["inline_keyboard"][0]
+
+    # Verify both buttons are <= 64 UTF-8 bytes and actions are preserved
+    btn_approve = keyboard[0]
+    btn_reject = keyboard[1]
+
+    assert len(btn_approve["callback_data"].encode("utf-8")) <= 64
+    assert len(btn_reject["callback_data"].encode("utf-8")) <= 64
+
+    assert btn_approve["callback_data"].startswith("h:")
+    assert btn_approve["callback_data"].endswith(":approve")
+
+    assert btn_reject["callback_data"].startswith("h:")
+    assert btn_reject["callback_data"].endswith(":reject")
 
 
 def test_notification_gateway_routing_and_fallback():
