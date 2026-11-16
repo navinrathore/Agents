@@ -7,6 +7,7 @@ freeware defaults (Webhook, Telegram, Console, Mock).
 
 from abc import ABC, abstractmethod
 from enum import Enum
+import html
 import json
 import logging
 import os
@@ -186,21 +187,23 @@ class TelegramChannel(BaseNotificationChannel):
             logger.warning("[TelegramChannel] bot_token or chat_id is missing. Dispatch skipped.")
             return False
 
-        # Format Telegram MarkdownV2 message text
+        # Format Telegram HTML message text with safe entity escaping
         score_text = f" ({payload.confidence_score * 100:.0f}% confidence)" if payload.confidence_score is not None else ""
+        escaped_title = html.escape(payload.title)
+        escaped_thread = html.escape(payload.thread_id)
         text_lines = [
-            f"🔔 *Human-in-the-Loop Review Required*",
-            f"━━━━━━━━━━━━━━━━━━━━",
-            f"*Thread:* `{payload.thread_id}`",
-            f"*Title:* {payload.title}{score_text}",
+            "<b>🔔 Human-in-the-Loop Review Required</b>",
+            "━━━━━━━━━━━━━━━━━━━━",
+            f"<b>Thread:</b> <code>{escaped_thread}</code>",
+            f"<b>Title:</b> {escaped_title}{score_text}",
         ]
         if payload.recipient:
-            text_lines.append(f"*Recipient:* `{payload.recipient}`")
+            text_lines.append(f"<b>Recipient:</b> <code>{html.escape(payload.recipient)}</code>")
         if payload.subject:
-            text_lines.append(f"*Subject:* {payload.subject}")
+            text_lines.append(f"<b>Subject:</b> {html.escape(payload.subject)}")
         if payload.body_preview:
             preview = payload.body_preview[:280] + ("..." if len(payload.body_preview) > 280 else "")
-            text_lines.append(f"\n*Draft Preview:*\n_{preview}_")
+            text_lines.append(f"\n<b>Draft Preview:</b>\n<i>{html.escape(preview)}</i>")
 
         # Build inline keyboard buttons
         inline_buttons: list[dict[str, str]] = []
@@ -215,7 +218,7 @@ class TelegramChannel(BaseNotificationChannel):
         telegram_payload = {
             "chat_id": self.chat_id,
             "text": "\n".join(text_lines),
-            "parse_mode": "Markdown",
+            "parse_mode": "HTML",
             "reply_markup": {
                 "inline_keyboard": [inline_buttons],
             },

@@ -201,6 +201,7 @@ def test_telegram_channel_dispatch(mock_server):
     assert req["path"] == "/bottest_bot_token_123/sendMessage"
     body = req["body"]
     assert body["chat_id"] == "chat_98765"
+    assert body["parse_mode"] == "HTML"
     assert "thread_tg_001" in body["text"]
     assert "Executive Outreach Approval" in body["text"]
 
@@ -218,6 +219,46 @@ def test_telegram_channel_missing_credentials():
     ch = TelegramChannel(bot_token="", chat_id="")
     payload = ReviewRequestPayload(thread_id="t_missing", title="T", summary="S")
     assert ch.send(payload) is False
+
+
+def test_telegram_channel_html_escaping(mock_server):
+    """Verify dynamic fields with HTML and Markdown characters are safely HTML-escaped."""
+    server, port = mock_server
+    telegram_ch = TelegramChannel(
+        bot_token="test_token",
+        chat_id="chat_123",
+        api_base=f"http://127.0.0.1:{port}",
+    )
+
+    payload = ReviewRequestPayload(
+        thread_id="thread_<danger>&_001",
+        title="Alert: <Critical> & High_Priority *Action*",
+        summary="Summary test",
+        recipient="user_name<test@example.com>",
+        subject="Re: Q3_Financial_Plan & Audit <Confidential>",
+        body_preview="Body with <b>raw HTML tags</b> & 'quotes' + _underscores_ & *stars*.",
+    )
+
+    assert telegram_ch.send(payload) is True
+    assert len(server.received_requests) == 1
+
+    body = server.received_requests[0]["body"]
+    assert body["parse_mode"] == "HTML"
+    text = body["text"]
+
+    # Assert dynamic content was escaped safely
+    assert "thread_&lt;danger&gt;&amp;_001" in text
+    assert "&lt;Critical&gt; &amp; High_Priority *Action*" in text
+    assert "user_name&lt;test@example.com&gt;" in text
+    assert "Re: Q3_Financial_Plan &amp; Audit &lt;Confidential&gt;" in text
+    assert "&lt;b&gt;raw HTML tags&lt;/b&gt; &amp; &#x27;quotes&#x27;" in text or "&lt;b&gt;raw HTML tags&lt;/b&gt; &amp; 'quotes'" in text
+    assert "_underscores_" in text  # Underscores preserved literally without causing Markdown entity errors
+
+    # Assert structural HTML tags are present
+    assert "<b>🔔 Human-in-the-Loop Review Required</b>" in text
+    assert "<code>thread_&lt;danger&gt;&amp;_001</code>" in text
+    assert "<b>Subject:</b>" in text
+    assert "<i>" in text and "</i>" in text
 
 
 def test_notification_gateway_routing_and_fallback():
