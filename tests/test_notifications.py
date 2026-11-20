@@ -22,6 +22,7 @@ from core.notifications import (
     TelegramChannel,
     WebhookChannel,
     encode_telegram_callback_data,
+    expand_env_vars,
     lookup_thread_by_hash,
     safe_utf8_truncate,
 )
@@ -407,3 +408,62 @@ def test_notification_gateway_from_dict_and_yaml(tmp_path: Path):
     gw_yaml = NotificationGateway.from_yaml(yaml_file)
     assert gw_yaml.default_channel == "webhook"
     assert gw_yaml.get_channel("webhook").target_url == "http://example.com/webhook"
+
+
+def test_expand_env_vars_syntax(monkeypatch):
+    """Verify expand_env_vars handles ${VAR}, ${VAR:-default}, $VAR, and unset tokens."""
+    monkeypatch.setenv("EXISTING_KEY", "secret_val_123")
+    monkeypatch.setenv("BASE_PORT", "8080")
+    monkeypatch.delenv("UNSET_KEY", raising=False)
+
+    # 1. Existing variable
+    assert expand_env_vars("Bearer ${EXISTING_KEY}") == "Bearer secret_val_123"
+    assert expand_env_vars("http://127.0.0.1:$BASE_PORT/api") == "http://127.0.0.1:8080/api"
+
+    # 2. Fallback default syntax ${VAR:-default}
+    assert expand_env_vars("${UNSET_KEY:-default_fallback}") == "default_fallback"
+    assert expand_env_vars("${EXISTING_KEY:-default_fallback}") == "secret_val_123"
+
+    # 3. Unset variable without default resolves to empty string (preventing truthy placeholder bug)
+    assert expand_env_vars("${UNSET_KEY}") == ""
+    assert expand_env_vars("prefix_${UNSET_KEY}_suffix") == "prefix__suffix"
+
+
+def test_notification_gateway_yaml_env_expansion(tmp_path: Path, monkeypatch):
+    """Verify NotificationGateway.from_yaml() expands environment variables in declarative configs."""
+    monkeypatch.setenv("TEST_TG_TOKEN", "live_telegram_token_xyz")
+    monkeypatch.setenv("TEST_CHAT_ID", "987654321")
+    monkeypatch.delenv("MISSING_AUTH_HEADER", raising=False)
+
+    yaml_content = """
+    notification:
+      default_channel: "telegram"
+      broadcast_all: false
+      channels:
+        telegram:
+          bot_token: "${TEST_TG_TOKEN}"
+          chat_id: "${TEST_CHAT_ID}"
+        webhook:
+          target_url: "${CUSTOM_WEBHOOK_URL:-http://127.0.0.1:9090/webhook}"
+          auth_header: "${MISSING_AUTH_HEADER}"
+          timeout_seconds: "${CUSTOM_TIMEOUT:-7.5}"
+    """
+
+    yaml_file = tmp_path / "env_config.yaml"
+    yaml_file.write_text(yaml_content, encoding="utf-8")
+
+    gw = NotificationGateway.from_yaml(yaml_file)
+    assert gw.default_channel == "telegram"
+
+    # Verify Telegram channel received expanded secrets
+    tg = gw.get_channel("telegram")
+    assert isinstance(tg, TelegramChannel)
+    assert tg.bot_token == "live_telegram_token_xyz"
+    assert tg.chat_id == "987654321"
+
+    # Verify Webhook channel resolved fallback default and unset auth header
+    wh = gw.get_channel("webhook")
+    assert isinstance(wh, WebhookChannel)
+    assert wh.target_url == "http://127.0.0.1:9090/webhook"
+    assert not wh.auth_header
+    assert wh.timeout_seconds == 7.5

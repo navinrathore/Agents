@@ -58,6 +58,61 @@ def resolve_hf_token(explicit_token: Optional[str] = None) -> Optional[str]:
     return None
 
 
+def prepare_strict_json_schema(schema: Union[dict, Type[BaseModel]]) -> dict:
+    """Prepare a JSON schema compliant with strict mode (e.g. OpenAI json_schema / vLLM Outlines).
+
+    Recursively ensures:
+    1. 'additionalProperties': False on all object schemas.
+    2. All properties listed in 'required' (required by OpenAI strict validation).
+    """
+    if hasattr(schema, "model_json_schema"):
+        raw_schema = schema.model_json_schema()
+    elif isinstance(schema, dict):
+        raw_schema = schema
+    else:
+        raise ValueError(f"Expected BaseModel class or dict schema, got {type(schema)}")
+
+    def _walk(node: Any) -> Any:
+        if not isinstance(node, dict):
+            return node
+
+        node = dict(node)
+
+        # If this is an object schema
+        if node.get("type") == "object" or "properties" in node:
+            node["additionalProperties"] = False
+            if "properties" in node and isinstance(node["properties"], dict):
+                current_required = set(node.get("required", []))
+                all_props = list(node["properties"].keys())
+                node["required"] = sorted(list(current_required.union(all_props)))
+
+                new_props = {}
+                for prop_name, prop_val in node["properties"].items():
+                    new_props[prop_name] = _walk(prop_val)
+                node["properties"] = new_props
+
+        # Walk $defs or definitions if present
+        for def_key in ("$defs", "definitions"):
+            if def_key in node and isinstance(node[def_key], dict):
+                node[def_key] = {k: _walk(v) for k, v in node[def_key].items()}
+
+        # Walk items if array
+        if "items" in node:
+            if isinstance(node["items"], dict):
+                node["items"] = _walk(node["items"])
+            elif isinstance(node["items"], list):
+                node["items"] = [_walk(item) for item in node["items"]]
+
+        # Walk anyOf / allOf / oneOf
+        for combiner in ("anyOf", "allOf", "oneOf"):
+            if combiner in node and isinstance(node[combiner], list):
+                node[combiner] = [_walk(item) for item in node[combiner]]
+
+        return node
+
+    return _walk(raw_schema)
+
+
 class BaseLLMClient:
     """Abstract base class defining unified stateful and stateless LLM interactions."""
 
@@ -68,6 +123,7 @@ class BaseLLMClient:
         pruning_config: Optional[dict] = None,
         temperature: float = 0.1,
         max_retries: int = 3,
+        structured_output_mode: Optional[str] = None,
     ):
         self.model = model
         self.model_name = model
@@ -75,6 +131,10 @@ class BaseLLMClient:
         self.pruning_config = pruning_config or {}
         self.temperature = temperature
         self.max_retries = max_retries
+        self.structured_output_mode = (
+            structured_output_mode
+            or os.getenv("LLM_STRUCTURED_OUTPUT_MODE", "auto")
+        ).lower()
         self.messages: List[Dict[str, Any]] = []
         self.system_prompt: str = ""
 
@@ -135,12 +195,53 @@ class BaseLLMClient:
         self,
         messages: Optional[List[Dict[str, str]]] = None,
         schema: Optional[Type[T]] = None,
+        mode: Optional[str] = None,
         **kwargs: Any,
     ) -> T:
-        """Enforces structured output parsing using a Pydantic schema with schema injection & error repair."""
+        """Enforces structured output parsing using a Pydantic schema.
+
+        Modes:
+        - "native": Enforces provider-level constrained decoding / function calling without prompt schema injection.
+        - "prompt_injection": Injects JSON schema into user/system prompt with JSON extractor & repair fallback.
+        - "auto": Attempts native provider enforcement first; gracefully falls back to prompt injection on failure.
+        """
         if schema is None or not PYDANTIC_AVAILABLE:
             raise ValueError("A valid Pydantic BaseModel schema is required for generate_structured.")
 
+        chosen_mode = (mode or self.structured_output_mode or "auto").lower()
+
+        if chosen_mode in ("native", "auto"):
+            try:
+                return self._generate_structured_native(messages=messages, schema=schema, **kwargs)
+            except Exception as e:
+                if chosen_mode == "native":
+                    raise
+                logger.warning(
+                    f"Native structured output failed with {self.__class__.__name__} ({e}). "
+                    f"Falling back to prompt injection mode..."
+                )
+
+        return self._generate_structured_prompt_injection(messages=messages, schema=schema, **kwargs)
+
+    def _generate_structured_native(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        """Provider-specific native structured output implementation.
+
+        Subclasses override this to call their respective provider APIs.
+        """
+        raise NotImplementedError(f"Native structured generation not implemented for {self.__class__.__name__}")
+
+    def _generate_structured_prompt_injection(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        """Fallback: Enforces structured output parsing using schema injection & error repair."""
         schema_json = json.dumps(schema.model_json_schema(), indent=2)
         system_instruction = (
             f"\n\nCRITICAL OUTPUT REQUIREMENT:\n"
@@ -273,6 +374,44 @@ class AnthropicClient(BaseLLMClient):
                 tool_calls.append({"id": block.id, "name": block.name, "input": block.input})
         return {"text": text, "tool_calls": tool_calls}
 
+    def _generate_structured_native(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        msgs = list(messages if messages is not None else self.messages)
+        system_text = self.system_prompt
+        clean_msgs = []
+        for m in msgs:
+            if m.get("role") == "system":
+                system_text = m.get("content", "")
+            else:
+                clean_msgs.append(m)
+
+        tool_name = schema.__name__
+        tool_schema = {
+            "name": tool_name,
+            "description": f"Outputs structured data conforming strictly to {tool_name} schema.",
+            "input_schema": schema.model_json_schema(),
+        }
+
+        response = self.client.messages.create(
+            model=self.model,
+            system=system_text,
+            messages=clean_msgs,
+            tools=[tool_schema],
+            tool_choice={"type": "tool", "name": tool_name},
+            max_tokens=kwargs.get("max_tokens", 2000),
+            temperature=kwargs.get("temperature", self.temperature),
+        )
+
+        for block in response.content:
+            if block.type == "tool_use" and block.name == tool_name:
+                return schema.model_validate(block.input)
+
+        raise ValueError(f"Anthropic response did not contain expected tool_use block for {tool_name}")
+
 
 class HuggingFaceClient(BaseLLMClient):
     """Hugging Face Inference Router Client.
@@ -379,6 +518,33 @@ class HuggingFaceClient(BaseLLMClient):
                 })
         return {"text": text, "tool_calls": tool_calls}
 
+    def _generate_structured_native(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        msgs = list(messages if messages is not None else ([{"role": "system", "content": self.system_prompt}] + self.messages))
+        actual_model = "Qwen/Qwen2.5-72B-Instruct" if self.model.startswith("claude-") else self.model
+        strict_schema = prepare_strict_json_schema(schema)
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema.__name__,
+                "strict": True,
+                "schema": strict_schema,
+            },
+        }
+        response = self.client.chat.completions.create(
+            model=actual_model,
+            messages=msgs,  # type: ignore
+            temperature=kwargs.get("temperature", self.temperature),
+            max_tokens=kwargs.get("max_tokens", 2000),
+            response_format=response_format,
+        )
+        content = response.choices[0].message.content or "{}"
+        return schema.model_validate_json(content)
+
 
 class OpenAILLMClient(BaseLLMClient):
     """Client for OpenAI and OpenAI-compatible endpoints (vLLM, Ollama, Groq)."""
@@ -464,6 +630,32 @@ class OpenAILLMClient(BaseLLMClient):
                 })
         return {"text": text, "tool_calls": tool_calls}
 
+    def _generate_structured_native(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        msgs = list(messages if messages is not None else ([{"role": "system", "content": self.system_prompt}] + self.messages))
+        strict_schema = prepare_strict_json_schema(schema)
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": schema.__name__,
+                "strict": True,
+                "schema": strict_schema,
+            },
+        }
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=msgs,  # type: ignore
+            temperature=kwargs.get("temperature", self.temperature),
+            max_tokens=kwargs.get("max_tokens", 2000),
+            response_format=response_format,
+        )
+        content = response.choices[0].message.content or "{}"
+        return schema.model_validate_json(content)
+
 
 class MockLLMClient(BaseLLMClient):
     """Hermetic Mock LLM Client for zero-token, deterministic offline test suites."""
@@ -475,12 +667,22 @@ class MockLLMClient(BaseLLMClient):
         pruning_config: Optional[dict] = None,
         canned_responses: Optional[List[str]] = None,
         structured_generator: Optional[Callable[[List[Dict[str, str]], Type[BaseModel]], BaseModel]] = None,
+        native_fail: bool = False,
+        structured_output_mode: Optional[str] = "prompt_injection",
         **kwargs,
     ):
-        super().__init__(model, use_checklist, pruning_config, **kwargs)
+        super().__init__(
+            model,
+            use_checklist,
+            pruning_config,
+            structured_output_mode=structured_output_mode,
+            **kwargs,
+        )
         self.canned_responses = list(canned_responses or ["Mock response."])
         self.response_index = 0
         self.structured_generator = structured_generator
+        self.native_fail = native_fail
+        self.last_structured_mode: Optional[str] = None
         self.call_history: List[List[Dict[str, str]]] = []
 
     def add_assistant_message(self, text: str, tool_calls: Optional[list] = None):
@@ -505,10 +707,44 @@ class MockLLMClient(BaseLLMClient):
         text = self.generate()
         return {"text": text, "tool_calls": []}
 
+    def _generate_structured_native(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        if self.native_fail:
+            raise RuntimeError("Mock native generation failed on endpoint (simulated 400 Bad Request).")
+
+        msgs = list(messages if messages is not None else ([{"role": "system", "content": self.system_prompt}] + self.messages))
+        self.call_history.append(msgs)
+        self.last_structured_mode = "native"
+
+        if self.structured_generator:
+            res = self.structured_generator(msgs, schema)
+            if isinstance(res, schema):
+                return res
+
+        raw = self.generate(messages=messages, **kwargs)
+        success, validated_model, err = StructuredOutputParser.parse(raw, response_model=schema)
+        if success and validated_model is not None:
+            return validated_model
+        raise ValueError(f"Mock native structured generation failed to parse: {err}")
+
+    def _generate_structured_prompt_injection(
+        self,
+        messages: Optional[List[Dict[str, str]]],
+        schema: Type[T],
+        **kwargs: Any,
+    ) -> T:
+        self.last_structured_mode = "prompt_injection"
+        return super()._generate_structured_prompt_injection(messages=messages, schema=schema, **kwargs)
+
     def generate_structured(
         self,
         messages: Optional[List[Dict[str, str]]] = None,
         schema: Optional[Type[T]] = None,
+        mode: Optional[str] = None,
         **kwargs: Any,
     ) -> T:
         msgs = list(messages if messages is not None else ([{"role": "system", "content": self.system_prompt}] + self.messages))
@@ -518,7 +754,7 @@ class MockLLMClient(BaseLLMClient):
             if isinstance(res, schema):
                 return res
 
-        return super().generate_structured(messages=msgs, schema=schema, **kwargs)
+        return super().generate_structured(messages=msgs, schema=schema, mode=mode, **kwargs)
 
 
 def get_llm_client(
@@ -526,6 +762,7 @@ def get_llm_client(
     provider: Optional[str] = None,
     use_checklist: bool = False,
     pruning_config: Optional[dict] = None,
+    structured_output_mode: Optional[str] = None,
     **kwargs,
 ) -> BaseLLMClient:
     """Universal factory helper to instantiate the configured LLM provider.
@@ -540,6 +777,13 @@ def get_llm_client(
     model_arg = kwargs.pop("model_name", None)
     known_providers = {"mock", "openai", "huggingface", "hf", "anthropic", "auto"}
     known_model_prefixes = ("claude", "gpt", "meta-llama", "qwen", "mistral", "deepseek")
+
+    client_kwargs = {
+        "use_checklist": use_checklist,
+        "pruning_config": pruning_config,
+        "structured_output_mode": structured_output_mode,
+        **kwargs,
+    }
 
     if provider is not None:
         prov = provider.lower()
@@ -556,25 +800,25 @@ def get_llm_client(
         effective_model = model_arg or "auto"
 
     if prov == "mock":
-        return MockLLMClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+        return MockLLMClient(model=effective_model, **client_kwargs)
     elif prov == "openai":
-        return OpenAILLMClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+        return OpenAILLMClient(model=effective_model, **client_kwargs)
     elif prov in ("hf", "huggingface"):
-        return HuggingFaceClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+        return HuggingFaceClient(model=effective_model, **client_kwargs)
     elif prov == "anthropic":
-        return AnthropicClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+        return AnthropicClient(model=effective_model, **client_kwargs)
     elif prov and prov != "auto":
         raise ValueError(f"Unsupported LLM provider: {prov}")
 
     # Auto discovery
     if os.environ.get("ANTHROPIC_API_KEY"):
-        return AnthropicClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+        return AnthropicClient(model=effective_model, **client_kwargs)
 
     token = resolve_hf_token(kwargs.get("hf_token"))
     if token:
-        return HuggingFaceClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, hf_token=token, **kwargs)
+        return HuggingFaceClient(model=effective_model, hf_token=token, **client_kwargs)
 
     if os.environ.get("OPENAI_API_KEY"):
-        return OpenAILLMClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+        return OpenAILLMClient(model=effective_model, **client_kwargs)
 
-    return MockLLMClient(model=effective_model, use_checklist=use_checklist, pruning_config=pruning_config, **kwargs)
+    return MockLLMClient(model=effective_model, **client_kwargs)

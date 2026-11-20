@@ -113,21 +113,21 @@ Implement Phase 8 (BL-002): A universal, provider-agnostic notification gateway 
 
 ### Phase 1: Immediate Critical Fixes (P0)
 
-1. **Telegram HTML Entity Escaping**:
+1. **Telegram HTML Entity Escaping** [COMPLETED]:
    Switch `TelegramChannel` from `parse_mode="Markdown"` to `parse_mode="HTML"` and wrap all dynamic fields (`title`, `subject`, `body_preview`, `thread_id`) in `html.escape()`.
-2. **Safe Callback Data Hashing**:
+2. **Safe Callback Data Hashing** [COMPLETED]:
    Encode `callback_data` safely within 64 UTF-8 bytes. If `f"{thread_id}:{action_id}"` exceeds 64 bytes, use a SHA-256 digest slice or short mapping.
-3. **Inbound Endpoint Security**:
+3. **Inbound Endpoint Security** *(Tracked in Backlog as BL-018 — deferred during dev/local mode; MUST for production)*:
    Add a shared secret token requirement (`APPROVAL_SERVER_API_KEY` header for `/api/callback` and `X-Telegram-Bot-Api-Secret-Token` for `/api/telegram/webhook`).
-4. **Telegram Webhook Acknowledgment**:
-   In `handle_telegram_webhook`, call `/answerCallbackQuery` using `callback_query["id"]`.
+4. **Telegram Webhook Acknowledgment (`answerCallbackQuery`)** [COMPLETED]:
+   In `handle_telegram_webhook`, call `/answerCallbackQuery` using `callback_query["id"]` with feedback text and alert styling.
 
 ### Phase 2: Robustness & Audit Logging (P1)
 
-5. **Accurate Controller Audit Trail**:
+5. **Accurate Controller Audit Trail** [COMPLETED]:
    Update `HITLController.start_workflow` to check `success = self.notification_gateway.dispatch(...)` and log `NOTIFICATION_DISPATCHED` on `True` or `NOTIFICATION_FAILED` on `False`.
-6. **Environment Variable Expansion in YAML**:
-   In `NotificationGateway.from_yaml()`, run `os.path.expandvars()` on the YAML text prior to calling `yaml.safe_load()`.
+6. **Environment Variable Expansion in YAML** [COMPLETED]:
+   In `NotificationGateway.from_yaml()`, expand environment variables with support for `${VAR}`, `${VAR:-default}`, and `$VAR`, safely resolving unset variables to prevent literal placeholder strings.
 
 ### Phase 3: Architectural Cleanup (P2 - Backlog)
 

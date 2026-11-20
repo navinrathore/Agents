@@ -13,6 +13,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 from typing import Any, Optional, Union
 import urllib.error
 import urllib.request
@@ -219,6 +220,30 @@ def encode_telegram_callback_data(
     return safe_utf8_truncate(callback_data, max_bytes)
 
 
+def expand_env_vars(text: str) -> str:
+    """Expand environment variables in text using ${VAR}, ${VAR:-default}, or $VAR syntax.
+
+    Unset variables without a default value expand to an empty string to prevent
+    unresolved literal placeholders (e.g. '${TELEGRAM_BOT_TOKEN}') from being treated
+    as truthy strings by config loaders.
+    """
+    pattern = re.compile(
+        r"\$\{(?P<var>[A-Za-z_][A-Za-z0-9_]*)(?::-(?P<default>[^}]*))?\}|\$(?P<bare>[A-Za-z_][A-Za-z0-9_]*)"
+    )
+
+    def _replace(match: re.Match) -> str:
+        var_name = match.group("var") or match.group("bare")
+        default_val = match.group("default")
+        val = os.environ.get(var_name)
+        if val is not None:
+            return val
+        if default_val is not None:
+            return default_val
+        return ""
+
+    return pattern.sub(_replace, text)
+
+
 class TelegramChannel(BaseNotificationChannel):
     """Telegram Bot API dispatcher with inline keyboard callback buttons.
 
@@ -358,12 +383,18 @@ class NotificationGateway:
 
         channel_configs = notif_cfg.get("channels", {})
 
+        def _clean_val(val: Any) -> Any:
+            if isinstance(val, str) and "$" in val:
+                return expand_env_vars(val)
+            return val
+
         # Webhook configuration
         webhook_cfg = channel_configs.get("webhook")
         if webhook_cfg:
-            target_url = webhook_cfg.get("target_url") or os.environ.get("NOTIFICATION_WEBHOOK_URL", "")
-            auth_header = webhook_cfg.get("auth_header") or os.environ.get("NOTIFICATION_WEBHOOK_AUTH")
-            timeout = float(webhook_cfg.get("timeout_seconds", 10.0))
+            target_url = _clean_val(webhook_cfg.get("target_url")) or os.environ.get("NOTIFICATION_WEBHOOK_URL", "")
+            auth_header = _clean_val(webhook_cfg.get("auth_header")) or os.environ.get("NOTIFICATION_WEBHOOK_AUTH")
+            timeout_raw = _clean_val(webhook_cfg.get("timeout_seconds", 10.0))
+            timeout = float(timeout_raw) if timeout_raw else 10.0
             channels["webhook"] = WebhookChannel(
                 target_url=target_url,
                 auth_header=auth_header,
@@ -373,9 +404,9 @@ class NotificationGateway:
         # Telegram configuration
         telegram_cfg = channel_configs.get("telegram")
         if telegram_cfg:
-            bot_token = telegram_cfg.get("bot_token") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
-            chat_id = telegram_cfg.get("chat_id") or os.environ.get("TELEGRAM_CHAT_ID", "")
-            api_base = telegram_cfg.get("api_base", "https://api.telegram.org")
+            bot_token = _clean_val(telegram_cfg.get("bot_token")) or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+            chat_id = _clean_val(telegram_cfg.get("chat_id")) or os.environ.get("TELEGRAM_CHAT_ID", "")
+            api_base = _clean_val(telegram_cfg.get("api_base")) or os.environ.get("TELEGRAM_API_BASE", "https://api.telegram.org")
             channels["telegram"] = TelegramChannel(
                 bot_token=bot_token,
                 chat_id=chat_id,
@@ -390,7 +421,7 @@ class NotificationGateway:
 
     @classmethod
     def from_yaml(cls, path: Union[str, Path]) -> "NotificationGateway":
-        """Load configuration from a YAML file."""
+        """Load configuration from a YAML file with environment variable expansion."""
         import yaml
         cfg_path = Path(path)
         if not cfg_path.exists():
@@ -398,6 +429,9 @@ class NotificationGateway:
             return cls()
 
         with open(cfg_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f) or {}
+            raw_text = f.read()
+
+        expanded_text = expand_env_vars(raw_text)
+        data = yaml.safe_load(expanded_text) or {}
         return cls.from_dict(data)
 
