@@ -13,6 +13,7 @@ The following items represent architectural improvements for the autonomous agen
 ## Framework Utilities Backlog (Grouped by Capability)
 
 ### Group 1: Execution Safety & Tool Handling
+- [x] 🔴 P0 **Parallel Tool Calling & Async Dispatcher (`core/dispatcher.py`)**: Built `AsyncToolDispatcher` with bounded semaphore concurrency (`max_concurrency`), configurable parallel/sequential execution toggle, per-tool timeout protection, error shielding, order preservation, and native MCP async tool bridging. #architecture #performance #tools
 - [ ] 🟢 P2 **Hash-based Non-Consecutive Repetition Detection**: Upgrade `RepetitionDetector` in `core/utils.py` to use `hashlib` and maintain a sliding window of past output hashes to catch non-consecutive loop repeats (e.g. error A → error B → error A). #reliability #safety
 - [ ] 🟡 P1 **ToolOutputTruncator**: Truncate oversized tool STDOUT/STDERR responses to a configurable character/token limit while preserving head and tail excerpts to prevent context window overflow. #performance #ux
 - [ ] 🟡 P1 **Payload Offloading Pattern (Data Pointer)**: Offload oversized tool results (e.g., > 10KB) to persistent storage and return a compact pointer contract (with head/tail preview) to the LLM context to prevent context window overflow. #architecture #performance

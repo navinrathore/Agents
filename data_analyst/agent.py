@@ -1,10 +1,14 @@
+import asyncio
+import concurrent.futures
 import os
 import textwrap
+from core.dispatcher import AsyncToolDispatcher, ToolExecutionResult
 from core.llm_clients import get_llm_client
 from core.utils import ExecutionTimer, RepetitionDetector
 from .executor import PythonExecutor
 from .sops import SOPRouter
 from .tools import get_anthropic_tools, get_openai_tools
+
 
 class DataAnalystAgent:
     def __init__(self, config: dict, output_dir: str = None):
@@ -22,6 +26,41 @@ class DataAnalystAgent:
         self.sop_router = SOPRouter()
         self.active_sop_name = None
         self.active_sop_content = ""
+        
+        # Parallel tool dispatcher configuration
+        parallel_enabled = self.config.get('parallel_tool_calls', True)
+        max_concurrency = int(self.config.get('max_concurrency', 3))
+        tool_timeout = float(self.config.get('tool_timeout', 30.0))
+
+        self.dispatcher = AsyncToolDispatcher(
+            default_timeout=tool_timeout,
+            parallel_execution=parallel_enabled,
+            max_concurrency=max_concurrency,
+        )
+        self._register_default_tools()
+
+    def _register_default_tools(self):
+        """Registers default tools into the AsyncToolDispatcher."""
+        async def _execute_python(code: str = "") -> str:
+            result = await asyncio.to_thread(self.executor.execute, code)
+            stdout = result.get('stdout', '')
+            stderr = result.get('stderr', '')
+            exit_code = result.get('exit_code', 0)
+            return f"Exit Code: {exit_code}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+
+        async def _manage_checklist(action: str = "", task_name: str = "") -> str:
+            if action == "add":
+                self.checklist[task_name] = False
+                return f"Task '{task_name}' added to checklist."
+            elif action == "complete":
+                if task_name in self.checklist:
+                    self.checklist[task_name] = True
+                    return f"Task '{task_name}' marked as complete."
+                return f"Error: Task '{task_name}' not found."
+            return "Error: Invalid action."
+
+        self.dispatcher.register_tool("execute_python", _execute_python)
+        self.dispatcher.register_tool("manage_checklist", _manage_checklist)
         
     def _get_dynamic_system_prompt(self):
         base_prompt = self.config.get('system', '')
@@ -41,7 +80,8 @@ class DataAnalystAgent:
         cl_str = "\n".join([f"[{'x' if status else ' '}] {task}" for task, status in self.checklist.items()])
         return base_prompt + checklist_instruction + f"\n\n### Internal Checklist\n{cl_str}"
 
-    def run(self, data_path: str, question: str):
+    async def run_async(self, data_path: str, question: str):
+        """Asynchronous execution loop supporting concurrent parallel tool calling."""
         verbose = self.config.get("verbose", False)
         
         # Dynamically route the query to the correct SOP
@@ -91,72 +131,74 @@ class DataAnalystAgent:
                         print("\n✅ [System]: Agent has completed the analysis.")
                         break
                         
+                    if self.dispatcher.parallel_execution:
+                        print(f"\n⚙️ [System]: Executing {len(tool_calls)} tool call(s) concurrently (max {self.dispatcher.max_concurrency})...")
+                    else:
+                        print(f"\n⚙️ [System]: Executing {len(tool_calls)} tool call(s) sequentially...")
                     for tc in tool_calls:
-                        tool_name = tc.get("name")
-                        if verbose:
-                            print(f"🔍 [Debug] Executing Tool: {tool_name}")
-                            
-                        if tool_name == "execute_python":
+                        if tc.get("name") == "execute_python":
                             code = tc.get("input", {}).get("code", "")
-                            print(f"\n⚙️ [System]: Executing Python Code:\n")
+                            print(f"\n⚙️ [System]: Python Code ({tc.get('id', 'N/A')}):\n")
                             print(textwrap.indent(code.strip(), '    │ '))
-                            
-                            result = self.executor.execute(code)
-                            
-                            stdout = result.get('stdout', '')
-                            stderr = result.get('stderr', '')
-                            exit_code = result.get('exit_code', 0)
-                            
-                            print(f"\n⚙️ [System]: Execution complete (Exit Code {exit_code})")
-                            if stdout:
-                                print(">> STDOUT:")
-                                print(textwrap.indent(stdout, '   '))
-                            if stderr:
-                                print(">> STDERR:")
-                                print(textwrap.indent(stderr, '   '))
-                                if error_detector.check(stderr):
-                                    print("\n❌ [System]: Exact same error repeated 3 times. Breaking loop to prevent infinite repetition.")
-                                    break_agent_loop = True
-                                    break
-                            else:
-                                error_detector.reset()
-                                
-                            # Format result for LLM
-                            tool_output = f"Exit Code: {exit_code}\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
-                            if verbose:
-                                print(f"🔍 [Debug] Code execution finished in {result.get('duration', 'N/A')}s")
-                                
-                            self.llm.add_tool_result(
-                                tool_call_id=tc.get("id"),
-                                name=tool_name,
-                                result=tool_output
-                            )
-                        elif tool_name == "manage_checklist":
-                            action = tc.get("input", {}).get("action")
-                            task_name = tc.get("input", {}).get("task_name")
-                            
-                            if action == "add":
-                                self.checklist[task_name] = False
-                                msg = f"Task '{task_name}' added to checklist."
-                            elif action == "complete":
-                                if task_name in self.checklist:
-                                    self.checklist[task_name] = True
-                                    msg = f"Task '{task_name}' marked as complete."
+
+                    # Concurrently dispatch all tool calls with fault isolation & timeouts
+                    results = await self.dispatcher.dispatch(tool_calls)
+
+                    for res in results:
+                        tool_name = res.name
+                        tool_output = res.result
+                        
+                        if verbose:
+                            print(f"🔍 [Debug] Tool '{tool_name}' ({res.tool_call_id}) completed in {res.duration}s (success={res.success})")
+
+                        if tool_name == "execute_python":
+                            print(f"\n⚙️ [System]: Execution complete for {res.tool_call_id}")
+                            if "STDOUT:\n" in tool_output:
+                                stdout_part = tool_output.split("STDOUT:\n", 1)[1].split("\nSTDERR:", 1)[0]
+                                if stdout_part.strip():
+                                    print(">> STDOUT:")
+                                    print(textwrap.indent(stdout_part.strip(), '   '))
+                            if "STDERR:\n" in tool_output:
+                                stderr_part = tool_output.split("STDERR:\n", 1)[1]
+                                if stderr_part.strip():
+                                    print(">> STDERR:")
+                                    print(textwrap.indent(stderr_part.strip(), '   '))
+                                    if error_detector.check(stderr_part.strip()):
+                                        print("\n❌ [System]: Exact same error repeated 3 times. Breaking loop to prevent infinite repetition.")
+                                        break_agent_loop = True
                                 else:
-                                    msg = f"Error: Task '{task_name}' not found."
-                            else:
-                                msg = "Error: Invalid action."
-                                
-                            print(f"\n📋 [System]: {msg}")
-                            self.llm.add_tool_result(tc.get("id"), tool_name, msg)
+                                    error_detector.reset()
+                        elif tool_name == "manage_checklist":
+                            print(f"\n📋 [System]: {tool_output}")
                         else:
-                            print(f"⚠️ [System]: Unknown tool requested: {tool_name}")
-                            self.llm.add_tool_result(
-                                tool_call_id=tc.get("id"),
-                                name=tool_name,
-                                result=f"Error: Unknown tool {tool_name}"
-                            )
+                            if not res.success:
+                                print(f"⚠️ [System]: {tool_output}")
+                            else:
+                                print(f"⚙️ [System]: Tool '{tool_name}' finished.")
+
+                        # Add tool result in preserved order to LLM history
+                        self.llm.add_tool_result(
+                            tool_call_id=res.tool_call_id,
+                            name=tool_name,
+                            result=tool_output
+                        )
+
+                    if break_agent_loop:
+                        break
         
         if loop_count >= max_loops:
             print("\n❌ [System]: Reached maximum number of loops.")
         print("--- Agent Run Complete ---")
+
+    def run(self, data_path: str, question: str):
+        """Synchronous entry point wrapping run_async for backwards compatibility."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                return executor.submit(asyncio.run, self.run_async(data_path, question)).result()
+        else:
+            return asyncio.run(self.run_async(data_path, question))

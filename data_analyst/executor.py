@@ -1,5 +1,6 @@
 import subprocess
 import os
+import sys
 import tempfile
 import textwrap
 
@@ -40,7 +41,7 @@ class PythonExecutor:
             
         try:
             result = subprocess.run(
-                ["python", temp_script],
+                [sys.executable, temp_script],
                 capture_output=True,
                 text=True,
                 timeout=self.timeout

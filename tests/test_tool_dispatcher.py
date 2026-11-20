@@ -213,3 +213,114 @@ async def test_dispatcher_empty_tool_calls():
     dispatcher = AsyncToolDispatcher()
     results = await dispatcher.dispatch([])
     assert results == []
+
+
+@pytest.mark.anyio
+async def test_dispatcher_configurable_sequential_mode():
+    """
+    Verify that when parallel_execution=False, tools execute strictly sequentially.
+    3 tools sleeping 0.1s sequentially should take >= 0.28s.
+    """
+    dispatcher = AsyncToolDispatcher(parallel_execution=False)
+
+    execution_order = []
+
+    async def step_tool(name: str):
+        execution_order.append(f"start_{name}")
+        await asyncio.sleep(0.1)
+        execution_order.append(f"end_{name}")
+        return f"result_{name}"
+
+    dispatcher.register_tool("step_tool", step_tool)
+
+    tool_calls = [
+        {"id": "call_1", "name": "step_tool", "input": {"name": "1"}},
+        {"id": "call_2", "name": "step_tool", "input": {"name": "2"}},
+        {"id": "call_3", "name": "step_tool", "input": {"name": "3"}},
+    ]
+
+    start = time.perf_counter()
+    results = await dispatcher.dispatch(tool_calls)
+    elapsed = time.perf_counter() - start
+
+    assert len(results) == 3
+    assert elapsed >= 0.28, f"Expected sequential elapsed >= 0.28s, got {elapsed:.2f}s"
+    assert execution_order == [
+        "start_1", "end_1",
+        "start_2", "end_2",
+        "start_3", "end_3",
+    ]
+
+
+@pytest.mark.anyio
+async def test_dispatcher_semaphore_max_concurrency_throttling():
+    """
+    Verify that max_concurrency caps the number of simultaneously active tasks.
+    With max_concurrency=2, running 4 tasks of 0.1s must run in 2 waves (taking >= 0.18s).
+    """
+    dispatcher = AsyncToolDispatcher(parallel_execution=True, max_concurrency=2)
+
+    active_concurrent_count = 0
+    max_observed_concurrency = 0
+
+    async def monitored_tool():
+        nonlocal active_concurrent_count, max_observed_concurrency
+        active_concurrent_count += 1
+        if active_concurrent_count > max_observed_concurrency:
+            max_observed_concurrency = active_concurrent_count
+        await asyncio.sleep(0.1)
+        active_concurrent_count -= 1
+        return "ok"
+
+    dispatcher.register_tool("monitored", monitored_tool)
+
+    tool_calls = [
+        {"id": f"call_{i}", "name": "monitored", "input": {}}
+        for i in range(4)
+    ]
+
+    start = time.perf_counter()
+    results = await dispatcher.dispatch(tool_calls)
+    elapsed = time.perf_counter() - start
+
+    assert len(results) == 4
+    assert max_observed_concurrency <= 2, f"Observed {max_observed_concurrency} tasks exceeding max_concurrency=2"
+    assert elapsed >= 0.18
+
+
+@pytest.mark.anyio
+async def test_dispatcher_sequential_only_barrier():
+    """
+    Verify that if any tool in the batch is registered as sequential_only=True,
+    the dispatcher automatically falls back to safe sequential execution.
+    """
+    dispatcher = AsyncToolDispatcher(parallel_execution=True)
+
+    execution_order = []
+
+    async def read_tool():
+        execution_order.append("read_start")
+        await asyncio.sleep(0.08)
+        execution_order.append("read_end")
+        return "read_done"
+
+    async def write_tool():
+        execution_order.append("write_start")
+        await asyncio.sleep(0.08)
+        execution_order.append("write_end")
+        return "write_done"
+
+    dispatcher.register_tool("read_tool", read_tool, sequential_only=False)
+    dispatcher.register_tool("write_tool", write_tool, sequential_only=True)
+    assert dispatcher.is_sequential("write_tool") is True
+
+    tool_calls = [
+        {"id": "c1", "name": "read_tool", "input": {}},
+        {"id": "c2", "name": "write_tool", "input": {}},
+    ]
+
+    results = await dispatcher.dispatch(tool_calls)
+    assert len(results) == 2
+    # Ran in strict sequential sequence because write_tool is sequential_only
+    assert execution_order == ["read_start", "read_end", "write_start", "write_end"]
+

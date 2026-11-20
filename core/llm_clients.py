@@ -666,6 +666,7 @@ class MockLLMClient(BaseLLMClient):
         use_checklist: bool = False,
         pruning_config: Optional[dict] = None,
         canned_responses: Optional[List[str]] = None,
+        canned_tool_calls: Optional[List[List[Dict[str, Any]]]] = None,
         structured_generator: Optional[Callable[[List[Dict[str, str]], Type[BaseModel]], BaseModel]] = None,
         native_fail: bool = False,
         structured_output_mode: Optional[str] = "prompt_injection",
@@ -680,13 +681,18 @@ class MockLLMClient(BaseLLMClient):
         )
         self.canned_responses = list(canned_responses or ["Mock response."])
         self.response_index = 0
+        self.canned_tool_calls = list(canned_tool_calls or [])
+        self.tool_call_index = 0
         self.structured_generator = structured_generator
         self.native_fail = native_fail
         self.last_structured_mode: Optional[str] = None
         self.call_history: List[List[Dict[str, str]]] = []
 
     def add_assistant_message(self, text: str, tool_calls: Optional[list] = None):
-        self.messages.append({"role": "assistant", "content": text or ""})
+        msg: Dict[str, Any] = {"role": "assistant", "content": text or ""}
+        if tool_calls:
+            msg["tool_calls"] = tool_calls
+        self.messages.append(msg)
 
     def add_tool_result(self, tool_call_id: str, name: str, result: str):
         self.messages.append({"role": "tool", "tool_call_id": tool_call_id, "name": name, "content": result})
@@ -705,7 +711,11 @@ class MockLLMClient(BaseLLMClient):
 
     def generate_response(self, tools: Optional[list] = None) -> dict:
         text = self.generate()
-        return {"text": text, "tool_calls": []}
+        tool_calls = []
+        if self.tool_call_index < len(self.canned_tool_calls):
+            tool_calls = self.canned_tool_calls[self.tool_call_index]
+            self.tool_call_index += 1
+        return {"text": text, "tool_calls": tool_calls}
 
     def _generate_structured_native(
         self,

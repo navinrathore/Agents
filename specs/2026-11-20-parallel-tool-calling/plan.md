@@ -32,33 +32,35 @@ Break the parallel tool calling implementation into 3 distinct, independently te
 ## Phase 2: Agent Loop Integration (`data_analyst/agent.py`)
 
 ### 2.1 Agent Asynchronous Support
-- [ ] Provide an async execution method `async def run_async(...)` in `DataAnalystAgent` (while keeping `run(...)` as a synchronous wrapper via `asyncio.run(...)` for backwards compatibility).
-- [ ] Initialize `AsyncToolDispatcher` within `DataAnalystAgent.__init__`.
-- [ ] Register `execute_python` (wrapped via `asyncio.to_thread(self.executor.execute)`) and `manage_checklist`.
+- [x] Provide an async execution method `async def run_async(...)` in `DataAnalystAgent` (while keeping `run(...)` as a synchronous wrapper via `asyncio.run(...)` for backwards compatibility).
+- [x] Initialize `AsyncToolDispatcher` within `DataAnalystAgent.__init__`.
+- [x] Register `execute_python` (wrapped via `asyncio.to_thread(self.executor.execute)`) and `manage_checklist`.
 
 ### 2.2 Parallel Tool Dispatch in ReAct Loop
-- [ ] Replace the blocking `for tc in tool_calls:` execution block with `await self.dispatcher.dispatch(tool_calls)`.
-- [ ] Feed all concurrent tool results back into `self.llm.add_tool_result(...)` in preserved order.
-- [ ] Integrate `RepetitionDetector` check against the combined stderr of executed tools.
+- [x] Replace the blocking `for tc in tool_calls:` execution block with `await self.dispatcher.dispatch(tool_calls)`.
+- [x] Feed all concurrent tool results back into `self.llm.add_tool_result(...)` in preserved order.
+- [x] Integrate `RepetitionDetector` check against the combined stderr of executed tools.
 
 ### 2.3 Phase 2 Integration Tests
-- [ ] Update or add integration test in `projects/Agents/tests/test_agent_parallel_execution.py`.
-- [ ] Use `MockLLMClient` configured to return multiple simultaneous `tool_calls` in a single response turn.
-- [ ] Verify that `DataAnalystAgent` processes all tool calls and feeds all tool result blocks to `llm.add_tool_result`.
+- [x] Update or add integration test in `projects/Agents/tests/test_agent_parallel_execution.py`.
+- [x] Use `MockLLMClient` configured to return multiple simultaneous `tool_calls` in a single response turn.
+- [x] Verify that `DataAnalystAgent` processes all tool calls and feeds all tool result blocks to `llm.add_tool_result`.
 
 ---
 
 ## Phase 3: Edge Cases, MCP Async Tools & Documentation
 
 ### 3.1 MCP Client Tool Bridge
-- [ ] Register tools from `MCPClientManager` into `AsyncToolDispatcher` using their native `async def session.call_tool` signatures.
-- [ ] Verify that MCP tools and local Python execution tools can run concurrently within the exact same LLM turn.
+- [x] Register tools from `MCPClientManager` into `AsyncToolDispatcher` using their native `async def session.call_tool` signatures.
+- [x] Verify that MCP tools and local Python execution tools can run concurrently within the exact same LLM turn.
 
 ### 3.2 Performance Benchmarking & Traceability
-- [ ] Add execution timing metrics to `ToolExecutionResult` and log concurrency diagnostics when `verbose=True`.
-- [ ] Benchmark comparison test: Verify wall-clock time reduction when multiple tools are dispatched simultaneously.
+- [x] Add execution timing metrics to `ToolExecutionResult` and log concurrency diagnostics when `verbose=True`.
+- [x] Benchmark comparison test: Verify wall-clock time reduction when multiple tools are dispatched simultaneously.
+- [x] Configurable execution mode (`parallel_execution: True | False`) and concurrency capping via `asyncio.Semaphore(max_concurrency)`.
+- [x] Declarative sequential barrier safety (`sequential_only=True`) for mutating/state-modifying tools.
 
 ### 3.3 Documentation & Gap Closure
-- [ ] Update [docs/agentic_concepts_master_extraction.md](file:///home/navin/work/AI/docs/agentic_concepts_master_extraction.md):
+- [x] Update [docs/agentic_concepts_master_extraction.md](file:///home/navin/work/AI/docs/agentic_concepts_master_extraction.md):
   - Mark `Parallel tool calling` as ✅ Implemented under Section 5.1 and the Gap Summary Matrix.
-- [ ] Update `projects/Agents/docs/backlog.md` with completed milestone.
+- [x] Update `projects/Agents/docs/backlog.md` with completed milestone.
