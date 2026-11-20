@@ -8,24 +8,24 @@ Break the parallel tool calling implementation into 3 distinct, independently te
 ## Phase 1: Core Async Tool Dispatcher (`core/dispatcher.py`)
 
 ### 1.1 Data Structures & Contracts
-- [ ] Define `ToolExecutionResult` dataclass (`tool_call_id: str`, `name: str`, `result: str`, `success: bool`, `error: Optional[str]`, `duration: float`).
-- [ ] Implement `AsyncToolDispatcher` class in `projects/Agents/core/dispatcher.py`.
-- [ ] Support registration of async tool callables (`register_tool(name: str, fn: Callable)`).
-- [ ] Implement sync-to-async adapter utility (`to_async_tool(fn: Callable)`) via `asyncio.to_thread` for legacy synchronous tools.
+- [x] Define `ToolExecutionResult` dataclass (`tool_call_id: str`, `name: str`, `result: str`, `success: bool`, `error: Optional[str]`, `duration: float`).
+- [x] Implement `AsyncToolDispatcher` class in `projects/Agents/core/dispatcher.py`.
+- [x] Support registration of async tool callables (`register_tool(name: str, fn: Callable)`).
+- [x] Implement sync-to-async adapter utility (`to_async_tool(fn: Callable)`) via `asyncio.to_thread` for legacy synchronous tools.
 
 ### 1.2 Concurrent Execution & Resilience Logic
-- [ ] Implement `async def dispatch(self, tool_calls: List[Dict[str, Any]], timeout: float = 30.0) -> List[ToolExecutionResult]`.
-- [ ] Use `asyncio.gather(*tasks, return_exceptions=True)` to ensure concurrent fan-out.
-- [ ] Enforce per-tool timeout using `asyncio.wait_for(task, timeout=tool_timeout)`.
-- [ ] Implement fault-tolerant error wrapper: Catch exceptions (TimeoutError, Exception) and convert them to formatted error output string for that specific `tool_call_id`.
-- [ ] Guarantee order preservation matching the input `tool_calls` list.
+- [x] Implement `async def dispatch(self, tool_calls: List[Dict[str, Any]], timeout: float = 30.0) -> List[ToolExecutionResult]`.
+- [x] Use `asyncio.gather(*tasks, return_exceptions=True)` to ensure concurrent fan-out.
+- [x] Enforce per-tool timeout using `asyncio.wait_for(task, timeout=tool_timeout)`.
+- [x] Implement fault-tolerant error wrapper: Catch exceptions (TimeoutError, Exception) and convert them to formatted error output string for that specific `tool_call_id`.
+- [x] Guarantee order preservation matching the input `tool_calls` list.
 
 ### 1.3 Phase 1 Unit Tests
-- [ ] Create `projects/Agents/tests/test_tool_dispatcher.py`.
-- [ ] Test concurrent speedup: Run two 0.5s mock tools in parallel and assert total execution time < 0.7s (proving concurrency vs. sequential 1.0s).
-- [ ] Test partial failure resilience: 1 failing tool + 1 successful tool -> both return results, failure does not propagate or crash sibling.
-- [ ] Test per-tool timeout: Tool taking 2.0s with timeout=0.2s raises `TimeoutError` cleanly caught and formatted as tool result.
-- [ ] Test unknown tool handling: Unregistered tool returns clear error result.
+- [x] Create `projects/Agents/tests/test_tool_dispatcher.py`.
+- [x] Test concurrent speedup: Run two 0.5s mock tools in parallel and assert total execution time < 0.7s (proving concurrency vs. sequential 1.0s).
+- [x] Test partial failure resilience: 1 failing tool + 1 successful tool -> both return results, failure does not propagate or crash sibling.
+- [x] Test per-tool timeout: Tool taking 2.0s with timeout=0.2s raises `TimeoutError` cleanly caught and formatted as tool result.
+- [x] Test unknown tool handling: Unregistered tool returns clear error result.
 
 ---
 

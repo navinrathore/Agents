@@ -4,6 +4,12 @@ Contains provider-agnostic LLM client abstractions, configuration loaders, execu
 and multi-channel remote notification gateway.
 """
 
+from core.dispatcher import (
+    AsyncToolDispatcher,
+    ToolExecutionResult,
+    is_coroutine_callable,
+    to_async_tool,
+)
 from core.notifications import (
     BaseNotificationChannel,
     ConsoleChannel,
@@ -17,6 +23,7 @@ from core.notifications import (
 )
 
 __all__ = [
+    "AsyncToolDispatcher",
     "BaseNotificationChannel",
     "ConsoleChannel",
     "MockChannel",
@@ -25,5 +32,8 @@ __all__ = [
     "NotificationGateway",
     "ReviewRequestPayload",
     "TelegramChannel",
+    "ToolExecutionResult",
     "WebhookChannel",
+    "is_coroutine_callable",
+    "to_async_tool",
 ]
