@@ -39,6 +39,13 @@ from core.output_guard import (
     TruncationResult,
 )
 from core.pointer_tools import PointerToolSuite, normalize_pointer_id
+from core.skills import (
+    SkillMetadata,
+    SkillPackage,
+    SkillRegistry,
+    generate_tool_schema,
+    parse_skill_md,
+)
 
 __all__ = [
     "ApprovalDecision",
@@ -61,12 +68,17 @@ __all__ = [
     "OutputGuardResult",
     "PointerToolSuite",
     "ReviewRequestPayload",
+    "SkillMetadata",
+    "SkillPackage",
+    "SkillRegistry",
     "TelegramChannel",
     "ToolExecutionResult",
     "ToolOutputTruncator",
     "TruncationResult",
     "WebhookChannel",
+    "generate_tool_schema",
     "is_coroutine_callable",
     "normalize_pointer_id",
+    "parse_skill_md",
     "to_async_tool",
 ]
