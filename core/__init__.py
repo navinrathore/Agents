@@ -21,6 +21,7 @@ from core.notifications import (
     TelegramChannel,
     WebhookChannel,
 )
+from core.openapi_loader import OpenAPIToolLoader
 
 __all__ = [
     "AsyncToolDispatcher",
@@ -30,6 +31,7 @@ __all__ = [
     "NotificationAction",
     "NotificationActionStyle",
     "NotificationGateway",
+    "OpenAPIToolLoader",
     "ReviewRequestPayload",
     "TelegramChannel",
     "ToolExecutionResult",
