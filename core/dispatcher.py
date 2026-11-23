@@ -4,6 +4,8 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Union
 
+from core.output_guard import OutputGuard, OutputGuardMode
+
 
 @dataclass
 class ToolExecutionResult:
@@ -14,6 +16,9 @@ class ToolExecutionResult:
     success: bool = True
     error: Optional[str] = None
     duration: float = 0.0
+    data_pointer: Optional[Dict[str, Any]] = None
+    is_offloaded: bool = False
+    is_truncated: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -55,6 +60,8 @@ class AsyncToolDispatcher:
         default_timeout: float = 30.0,
         parallel_execution: bool = True,
         max_concurrency: int = 5,
+        output_guard: Optional[OutputGuard] = None,
+        auto_offload: bool = True,
     ):
         self.default_timeout = default_timeout
         self.parallel_execution = parallel_execution
@@ -62,6 +69,13 @@ class AsyncToolDispatcher:
         self._semaphore: Optional[asyncio.Semaphore] = None
         self.tools: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
         self.sequential_tools: Set[str] = set()
+
+        if output_guard is not None:
+            self.output_guard: Optional[OutputGuard] = output_guard
+        elif auto_offload:
+            self.output_guard = OutputGuard(mode=OutputGuardMode.OFFLOAD_AND_TRUNCATE)
+        else:
+            self.output_guard = None
 
     @property
     def semaphore(self) -> asyncio.Semaphore:
@@ -173,6 +187,28 @@ class AsyncToolDispatcher:
             res = await asyncio.wait_for(tool_fn(**inputs), timeout=timeout)
             duration = time.perf_counter() - start_time
             result_str = str(res) if res is not None else ""
+
+            data_pointer = None
+            is_offloaded = False
+            is_truncated = False
+
+            if self.output_guard is not None:
+                guard_res = self.output_guard.process(
+                    output=result_str,
+                    tool_name=name,
+                    tool_call_id=tool_id,
+                )
+                result_str = guard_res.content
+                if guard_res.data_pointer is not None:
+                    if hasattr(guard_res.data_pointer, "model_dump"):
+                        data_pointer = guard_res.data_pointer.model_dump()
+                    elif hasattr(guard_res.data_pointer, "dict"):
+                        data_pointer = guard_res.data_pointer.dict()
+                    elif isinstance(guard_res.data_pointer, dict):
+                        data_pointer = guard_res.data_pointer
+                is_offloaded = guard_res.is_offloaded
+                is_truncated = guard_res.is_truncated
+
             return ToolExecutionResult(
                 tool_call_id=tool_id,
                 name=name,
@@ -180,6 +216,9 @@ class AsyncToolDispatcher:
                 success=True,
                 error=None,
                 duration=round(duration, 4),
+                data_pointer=data_pointer,
+                is_offloaded=is_offloaded,
+                is_truncated=is_truncated,
             )
         except asyncio.TimeoutError:
             duration = time.perf_counter() - start_time

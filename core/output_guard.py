@@ -98,6 +98,9 @@ else:
             from dataclasses import asdict
             return asdict(self)
 
+        def model_dump(self) -> Dict[str, Any]:
+            return self.dict()
+
 
 class TruncationResult:
     """Holds the result of a head/tail excerpt operation."""
