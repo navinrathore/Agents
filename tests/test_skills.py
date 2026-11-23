@@ -9,9 +9,11 @@ if AGENTS_ROOT not in sys.path:
     sys.path.insert(0, AGENTS_ROOT)
 
 from core.skills import (
+    SkillManager,
     SkillMetadata,
     SkillPackage,
     SkillRegistry,
+    SkillRouter,
     generate_tool_schema,
     parse_skill_md,
 )
@@ -169,3 +171,101 @@ def test_registry_catalog_summary(temp_skills_dir):
     assert "Available skills (activate on demand):" in summary
     assert "- alpha: Alpha skill capability. [triggers: run alpha]" in summary
     assert "- beta: Beta skill capability." in summary
+
+
+# ==============================================================================
+# 4. Cascading Hybrid Router Tests (Tier 1 & Tier 2)
+# ==============================================================================
+
+def test_skill_router_tier1_keyword_match():
+    skills_root = Path(AGENTS_ROOT) / "skills"
+    registry = SkillRegistry(search_paths=[skills_root])
+    router = SkillRouter(registry=registry)
+
+    # 1. Matches trigger keyword 'sql'
+    matches = router.route("Can you run some sql queries on the users table?")
+    assert matches == ["data_analyst"]
+
+    # 2. Matches tag 'analytics'
+    matches_tag = router.route("I need advanced analytics on recent orders")
+    assert matches_tag == ["data_analyst"]
+
+    # 3. Unrelated query returns empty
+    matches_none = router.route("Write a haiku about rain")
+    assert matches_none == []
+
+
+def test_skill_router_tier2_fallback():
+    skills_root = Path(AGENTS_ROOT) / "skills"
+    registry = SkillRegistry(search_paths=[skills_root])
+
+    # Mock LLM classifier for Tier 2 fallback
+    def mock_llm_classifier(query: str, available_skills: list) -> list:
+        if "client records" in query.lower():
+            return ["data_analyst"]
+        return []
+
+    router = SkillRouter(registry=registry, llm_classifier=mock_llm_classifier)
+
+    # Obscure phrasing that doesn't trigger Tier 1 keywords
+    ambiguous_query = "Please examine our active client records"
+    assert router.route_tier1(ambiguous_query) == []
+
+    # Cascades to Tier 2
+    routed = router.route(ambiguous_query)
+    assert routed == ["data_analyst"]
+
+
+# ==============================================================================
+# 5. SkillManager Lifecycle & Dynamic Tool Mounting Tests
+# ==============================================================================
+
+@pytest.mark.anyio
+async def test_skill_manager_dynamic_mounting_and_execution():
+    from core.dispatcher import AsyncToolDispatcher
+
+    skills_root = Path(AGENTS_ROOT) / "skills"
+    registry = SkillRegistry(search_paths=[skills_root])
+    manager = SkillManager(registry=registry)
+    dispatcher = AsyncToolDispatcher()
+
+    # Initial state: dispatcher has 0 tools
+    assert not dispatcher.has_tool("describe_table")
+    assert not dispatcher.has_tool("query_table")
+
+    # 1. Route and dynamically mount tools
+    matched = manager.route_and_activate("Please run a sql analysis on users", dispatcher=dispatcher)
+    assert matched == ["data_analyst"]
+    assert manager.is_active("data_analyst")
+
+    # Dispatcher now has tools mounted!
+    assert dispatcher.has_tool("describe_table")
+    assert dispatcher.has_tool("query_table")
+
+    # Execute mounted tool through dispatcher
+    results = await dispatcher.dispatch([
+        {"id": "call_1", "name": "describe_table", "input": {"table_name": "users"}}
+    ])
+    assert len(results) == 1
+    assert results[0].success is True
+    assert "Table: users" in results[0].result
+
+    # 2. Check dynamic SOP prompt injection
+    base_prompt = "You are an autonomous assistant."
+    augmented_prompt = manager.build_system_prompt(base_prompt)
+    assert "ACTIVE SPECIALIZED SKILL GUIDELINES" in augmented_prompt
+    assert "SQL Data Analyst SOP" in augmented_prompt
+
+    # 3. Unmount skill cleanly
+    deactivated = manager.deactivate_skills(["data_analyst"], dispatcher=dispatcher)
+    assert deactivated == ["data_analyst"]
+    assert not manager.is_active("data_analyst")
+
+    # Tools are unmounted from dispatcher
+    assert not dispatcher.has_tool("describe_table")
+    assert not dispatcher.has_tool("query_table")
+
+    # Prompt reverts back to pristine base prompt
+    clean_prompt = manager.build_system_prompt(base_prompt)
+    assert clean_prompt == base_prompt
+

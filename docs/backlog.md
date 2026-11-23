@@ -39,8 +39,8 @@ The following items represent architectural improvements for the autonomous agen
 - [ ] 🔴 P0 **Dynamic Context Minimization (Summarize-and-Forget)**: Implement summarize-and-forget patterns to aggressively truncate conversation history and remove raw untrusted data (like tool outputs from malicious PDFs) from the context window, reducing the persistent prompt injection attack surface. #security #performance
 
 ### Group 6: Modular Skill Registry & Plugin Architecture
-- [ ] 🟡 P1 **SkillRegistry & SkillManager (`core/skills.py`)**: Implement framework-level automatic discovery of `SKILL.md` YAML frontmatter metadata, dynamic prompt loading, and tool schema registration. #architecture #plugin
-- [ ] 🟡 P1 **Declarative Skill Package Specification**: Standardize user-defined skill package directory layouts (`SKILL.md`, `tools.py`, `templates/`, `resources/`) across agents. #architecture #standards
+- [x] 🟡 P1 **SkillRegistry & SkillManager (`core/skills.py`)**: Implement framework-level automatic discovery of `SKILL.md` YAML frontmatter metadata, dynamic prompt loading, and tool schema registration. Features the Cascading Hybrid Router (Tier 1 deterministic fast path + Tier 2 LLM/semantic fallback). #architecture #plugin
+- [x] 🟡 P1 **Declarative Skill Package Specification**: Standardize user-defined skill package directory layouts (`SKILL.md`, `tools.py`, `templates/`, `resources/`) across agents. Validated with reference `data_analyst` skill package. #architecture #standards
 - [ ] 🟢 P2 **Sub-Agent Skill Execution Engine**: Support spawning isolated child ReAct agent loops for complex sub-agent skill execution. #architecture #multi-agent
 
 ### Group 7: Documentation & Structure

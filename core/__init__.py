@@ -40,9 +40,11 @@ from core.output_guard import (
 )
 from core.pointer_tools import PointerToolSuite, normalize_pointer_id
 from core.skills import (
+    SkillManager,
     SkillMetadata,
     SkillPackage,
     SkillRegistry,
+    SkillRouter,
     generate_tool_schema,
     parse_skill_md,
 )
@@ -68,9 +70,11 @@ __all__ = [
     "OutputGuardResult",
     "PointerToolSuite",
     "ReviewRequestPayload",
+    "SkillManager",
     "SkillMetadata",
     "SkillPackage",
     "SkillRegistry",
+    "SkillRouter",
     "TelegramChannel",
     "ToolExecutionResult",
     "ToolOutputTruncator",

@@ -324,3 +324,185 @@ class SkillRegistry:
             lines.append(pkg.to_summary_line())
 
         return "\n".join(lines)
+
+
+class SkillRouter:
+    """
+    The Cascading Hybrid Router.
+    Tier 1: Instant deterministic keyword & trigger matching (< 1ms, 0 tokens).
+    Tier 2: Optional semantic / LLM classifier fallback for ambiguous queries.
+    """
+
+    def __init__(
+        self,
+        registry: SkillRegistry,
+        llm_classifier: Optional[Callable[[str, List[SkillMetadata]], List[str]]] = None,
+    ):
+        self.registry = registry
+        self.llm_classifier = llm_classifier
+
+    def route_tier1(self, query: str) -> List[str]:
+        """
+        Fast deterministic trigger & keyword matcher.
+        Matches against skill triggers, tags, and skill name.
+        """
+        q_lower = query.lower()
+        matched: List[str] = []
+
+        skills = self.registry.discover_skills() if not self.registry._skills else self.registry._skills
+        for name, pkg in skills.items():
+            meta = pkg.metadata
+            # 1. Exact or substring match in triggers
+            for trig in meta.triggers:
+                if trig.lower() in q_lower:
+                    matched.append(name)
+                    break
+            if name in matched:
+                continue
+
+            # 2. Check tags
+            for tag in meta.tags:
+                pattern = rf"\b{re.escape(tag.lower())}\b"
+                if re.search(pattern, q_lower):
+                    matched.append(name)
+                    break
+            if name in matched:
+                continue
+
+            # 3. Check skill name
+            pattern = rf"\b{re.escape(name.lower().replace('_', ' '))}\b|\b{re.escape(name.lower())}\b"
+            if re.search(pattern, q_lower):
+                matched.append(name)
+
+        return matched
+
+    def route_tier2(self, query: str) -> List[str]:
+        """
+        Fallback semantic or LLM intent classifier.
+        Invoked only when Tier 1 produces zero matches.
+        """
+        if self.llm_classifier is None:
+            return []
+        try:
+            return self.llm_classifier(query, self.registry.list_skills())
+        except Exception:
+            return []
+
+    def route(self, query: str) -> List[str]:
+        """
+        Cascading execution:
+        Tries Tier 1 (deterministic fast path) first.
+        If zero matches, cascades to Tier 2 (LLM classifier).
+        """
+        if not query:
+            return []
+
+        tier1_matches = self.route_tier1(query)
+        if tier1_matches:
+            return tier1_matches
+
+        return self.route_tier2(query)
+
+
+class SkillManager:
+    """
+    Supervisory coordinator that manages active skills, mounts/unmounts tool
+    functions with an AsyncToolDispatcher, and dynamically injects SOP guidelines into prompts.
+    """
+
+    def __init__(
+        self,
+        registry: SkillRegistry,
+        router: Optional[SkillRouter] = None,
+    ):
+        self.registry = registry
+        self.router = router or SkillRouter(registry=registry)
+        self.active_skills: Dict[str, SkillPackage] = {}
+
+    def is_active(self, skill_name: str) -> bool:
+        return skill_name in self.active_skills
+
+    def get_active_skill_names(self) -> List[str]:
+        return list(self.active_skills.keys())
+
+    def activate_skills(
+        self,
+        skill_names: List[str],
+        dispatcher: Optional[Any] = None,
+    ) -> List[str]:
+        """
+        Mounts the specified skills into active state.
+        If a dispatcher is provided, registers the skill's tools dynamically.
+        """
+        activated: List[str] = []
+        for name in skill_names:
+            pkg = self.registry.get_skill(name)
+            if not pkg:
+                continue
+
+            self.active_skills[name] = pkg
+            activated.append(name)
+
+            if dispatcher is not None:
+                for tool_name, tool_fn in pkg.tool_callables.items():
+                    dispatcher.register_tool(
+                        tool_name,
+                        tool_fn,
+                        require_approval=pkg.metadata.requires_approval,
+                    )
+
+        return activated
+
+    def deactivate_skills(
+        self,
+        skill_names: Optional[List[str]] = None,
+        dispatcher: Optional[Any] = None,
+    ) -> List[str]:
+        """
+        Unmounts skills from active state.
+        If a dispatcher is provided, unregisters the skill's tools.
+        If skill_names is None, unmounts ALL active skills.
+        """
+        target_names = skill_names if skill_names is not None else list(self.active_skills.keys())
+        deactivated: List[str] = []
+
+        for name in target_names:
+            pkg = self.active_skills.pop(name, None)
+            if not pkg:
+                continue
+
+            deactivated.append(name)
+            if dispatcher is not None:
+                for tool_name in pkg.tool_names:
+                    dispatcher.unregister_tool(tool_name)
+
+        return deactivated
+
+    def build_system_prompt(self, base_prompt: str) -> str:
+        """
+        Appends active SOP instructions (Progressive Disclosure Tier 2) to the system prompt.
+        If no skills are active, returns base_prompt unmodified.
+        """
+        if not self.active_skills:
+            return base_prompt
+
+        sections = [base_prompt.rstrip(), "", "---", "### ACTIVE SPECIALIZED SKILL GUIDELINES:"]
+        for name, pkg in self.active_skills.items():
+            sections.append(f"\n#### [Skill: {name}]\n{pkg.sop_content}")
+        sections.append("---")
+
+        return "\n".join(sections)
+
+    def route_and_activate(
+        self,
+        query: str,
+        dispatcher: Optional[Any] = None,
+    ) -> List[str]:
+        """
+        Convenience pipeline:
+        Routes query through Cascading Hybrid Router and automatically mounts matched skills.
+        """
+        matched = self.router.route(query)
+        if matched:
+            self.activate_skills(matched, dispatcher=dispatcher)
+        return matched

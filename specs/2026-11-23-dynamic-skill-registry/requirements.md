@@ -31,7 +31,9 @@ The **Dynamic Skill / Tool Package Registry** provides an **optional**, pluggabl
 - **Core Registry Engine (`core/skills.py`)**:
   - `SkillPackage`: Encapsulates parsed frontmatter, SOP body, tool callables, and tool schemas.
   - `SkillRegistry`: Discovers skills across configured directories (e.g. `projects/Agents/skills/`, `~/.agents/skills/`), validates package structure, and caches metadata.
-  - `SkillRouter`: Matches user queries or intent against skill metadata (rule-based keywords/triggers, regex, or extensible semantic matching).
+  - `SkillRouter`: Cascading Hybrid Router with:
+    - *Tier 1 (Fast Deterministic Path)*: Instant sub-millisecond keyword, trigger, and regex matching against `SKILL.md` frontmatter ($0 token tax).
+    - *Tier 2 (Semantic / LLM Fallback Path)*: Optional LLM-assisted or semantic intent classifier invoked only when Tier 1 produces zero matches.
 - **Dynamic Mounting Lifecycle**:
   - `mount_skill(skill_name, dispatcher)`: Extracts tool callables from `tools.py` and registers them into `AsyncToolDispatcher`.
   - `unmount_skill(skill_name, dispatcher)`: Cleanly unregisters the skill's tools, restoring the dispatcher to its baseline.

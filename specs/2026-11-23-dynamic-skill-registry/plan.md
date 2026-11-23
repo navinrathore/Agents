@@ -46,9 +46,10 @@
    - `list_skills() -> List[SkillMetadata]`
 
 ### Phase 2: Intent Router & Dynamic Dispatcher Mounting
-1. **`SkillRouter`**:
-   - Rule-based keyword, trigger, and regex matching.
-   - `route(query: str) -> List[str]`: Returns list of matched skill names in priority order.
+1. **`SkillRouter` (The Cascading Hybrid Router)**:
+   - **Tier 1 (Fast Path)**: Rule-based keyword, trigger, and regex matching against `SkillMetadata.triggers` and `tags` ($0 token tax, < 1ms).
+   - **Tier 2 (Fallback Path)**: Optional `llm_classifier: Optional[Callable[[str, List[SkillMetadata]], List[str]]]` or LLM client invocation when Tier 1 produces zero matches.
+   - `route(query: str) -> List[str]`: Cascades through Tier 1 first, then Tier 2 if configured and needed.
 2. **`SkillManager` (Supervisory Coordinator)**:
    - Manages active skills in the current agent session.
    - `activate_skills(skill_names: List[str], dispatcher: AsyncToolDispatcher)`: Dynamically registers tools into dispatcher.
