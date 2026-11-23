@@ -10,6 +10,12 @@ from core.dispatcher import (
     is_coroutine_callable,
     to_async_tool,
 )
+from core.hitl import (
+    ApprovalDecision,
+    ApprovalRequest,
+    ApprovalStatus,
+    HITLApprovalGate,
+)
 from core.notifications import (
     BaseNotificationChannel,
     ConsoleChannel,
@@ -35,11 +41,15 @@ from core.output_guard import (
 from core.pointer_tools import PointerToolSuite, normalize_pointer_id
 
 __all__ = [
+    "ApprovalDecision",
+    "ApprovalRequest",
+    "ApprovalStatus",
     "AsyncToolDispatcher",
     "BaseNotificationChannel",
     "BasePayloadStore",
     "ConsoleChannel",
     "DataPointer",
+    "HITLApprovalGate",
     "LocalDiskPayloadStore",
     "MockChannel",
     "NotificationAction",

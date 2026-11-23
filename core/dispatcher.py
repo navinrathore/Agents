@@ -2,9 +2,13 @@ import asyncio
 import inspect
 import time
 from dataclasses import asdict, dataclass
+import logging
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Union
 
+from core.hitl import ApprovalDecision, ApprovalRequest, ApprovalStatus, HITLApprovalGate
 from core.output_guard import OutputGuard, OutputGuardMode
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,6 +23,7 @@ class ToolExecutionResult:
     data_pointer: Optional[Dict[str, Any]] = None
     is_offloaded: bool = False
     is_truncated: bool = False
+    approval_status: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -62,6 +67,8 @@ class AsyncToolDispatcher:
         max_concurrency: int = 5,
         output_guard: Optional[OutputGuard] = None,
         auto_offload: bool = True,
+        approval_gate: Optional[HITLApprovalGate] = None,
+        risk_predicate: Optional[Callable[[str, Dict[str, Any]], bool]] = None,
     ):
         self.default_timeout = default_timeout
         self.parallel_execution = parallel_execution
@@ -69,6 +76,9 @@ class AsyncToolDispatcher:
         self._semaphore: Optional[asyncio.Semaphore] = None
         self.tools: Dict[str, Callable[..., Coroutine[Any, Any, Any]]] = {}
         self.sequential_tools: Set[str] = set()
+        self.sensitive_tools: Set[str] = set()
+        self.approval_gate = approval_gate
+        self.risk_predicate = risk_predicate
 
         if output_guard is not None:
             self.output_guard: Optional[OutputGuard] = output_guard
@@ -90,11 +100,13 @@ class AsyncToolDispatcher:
         fn: Callable[..., Any],
         is_async: Optional[bool] = None,
         sequential_only: bool = False,
+        require_approval: bool = False,
     ) -> None:
         """
         Registers a tool by name.
         - sequential_only: if True, this tool will never be executed concurrently
           with other tools (e.g. for disk writes, table creation, mutations).
+        - require_approval: if True, requires human approval via approval_gate before execution.
         """
         if is_async is None:
             is_async = is_coroutine_callable(fn)
@@ -109,12 +121,18 @@ class AsyncToolDispatcher:
         elif name in self.sequential_tools:
             self.sequential_tools.remove(name)
 
+        if require_approval:
+            self.sensitive_tools.add(name)
+        elif name in self.sensitive_tools:
+            self.sensitive_tools.remove(name)
+
     def register_mcp_tool(
         self,
         tool_name: str,
         conn_or_manager: Any,
         server_name: Optional[str] = None,
         sequential_only: bool = False,
+        require_approval: bool = False,
     ) -> None:
         """
         Registers an MCP tool directly into the dispatcher.
@@ -138,6 +156,7 @@ class AsyncToolDispatcher:
             _mcp_wrapper,
             is_async=True,
             sequential_only=sequential_only,
+            require_approval=require_approval,
         )
 
     def unregister_tool(self, name: str) -> None:
@@ -183,6 +202,49 @@ class AsyncToolDispatcher:
 
         tool_fn = self.tools[name]
 
+        # Check security / HITL approval gate
+        is_sensitive = (name in self.sensitive_tools)
+        if not is_sensitive and self.risk_predicate is not None:
+            try:
+                is_sensitive = bool(self.risk_predicate(name, inputs))
+            except Exception as exc:
+                logger.warning(f"Error evaluating risk_predicate for tool '{name}': {exc}")
+
+        approval_status_val: Optional[str] = None
+        if is_sensitive:
+            if self.approval_gate is None:
+                self.approval_gate = HITLApprovalGate()
+
+            approval_req = await self.approval_gate.request_approval(
+                tool_name=name,
+                inputs=inputs,
+                thread_id=tool_id,
+                timeout=timeout,
+            )
+            approval_status_val = approval_req.status.value
+
+            if not approval_req.is_approved:
+                duration = time.perf_counter() - start_time
+                reason = (
+                    approval_req.reviewer_note
+                    or ("Timed out awaiting reviewer approval"
+                        if approval_req.status == ApprovalStatus.TIMED_OUT
+                        else "Denied by human reviewer")
+                )
+                rejection_msg = (
+                    f"Execution Blocked: Tool '{name}' requires human approval. "
+                    f"Decision: {approval_req.status.value.upper()}. Reason: {reason}"
+                )
+                return ToolExecutionResult(
+                    tool_call_id=tool_id,
+                    name=name,
+                    result=rejection_msg,
+                    success=False,
+                    error=rejection_msg,
+                    duration=round(duration, 4),
+                    approval_status=approval_status_val,
+                )
+
         try:
             res = await asyncio.wait_for(tool_fn(**inputs), timeout=timeout)
             duration = time.perf_counter() - start_time
@@ -219,6 +281,7 @@ class AsyncToolDispatcher:
                 data_pointer=data_pointer,
                 is_offloaded=is_offloaded,
                 is_truncated=is_truncated,
+                approval_status=approval_status_val,
             )
         except asyncio.TimeoutError:
             duration = time.perf_counter() - start_time
