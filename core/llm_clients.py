@@ -712,6 +712,12 @@ class MockLLMClient(BaseLLMClient):
     def generate_response(self, tools: Optional[list] = None) -> dict:
         text = self.generate()
         tool_calls = []
+        if isinstance(text, dict):
+            item_tool_calls = text.get("tool_calls", [])
+            item_text = text.get("text", "")
+            if item_tool_calls:
+                tool_calls = item_tool_calls
+            text = item_text
         if self.tool_call_index < len(self.canned_tool_calls):
             tool_calls = self.canned_tool_calls[self.tool_call_index]
             self.tool_call_index += 1

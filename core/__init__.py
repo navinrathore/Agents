@@ -49,6 +49,12 @@ from core.skills import (
     generate_tool_schema,
     parse_skill_md,
 )
+from core.subagent import (
+    SkillSubAgent,
+    SubAgentConfig,
+    SubAgentEngine,
+    SubAgentExecutionResult,
+)
 from core.utils import ExecutionTimer, JsonExtractor, RepetitionDetector
 
 __all__ = [
@@ -83,6 +89,10 @@ __all__ = [
     "SkillPackage",
     "SkillRegistry",
     "SkillRouter",
+    "SkillSubAgent",
+    "SubAgentConfig",
+    "SubAgentEngine",
+    "SubAgentExecutionResult",
     "TelegramChannel",
     "ToolExecutionResult",
     "ToolOutputTruncator",
