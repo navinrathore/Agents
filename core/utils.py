@@ -1,3 +1,5 @@
+from collections import Counter, deque
+import hashlib
 import json
 import re
 import time
@@ -37,34 +39,82 @@ class ExecutionTimer:
 
 class RepetitionDetector:
     """
-    A generic detector to identify when an agent repeats the exact same state or output.
-    This can be used to prevent infinite loops when an LLM repeats the same error.
+    A robust detector to identify when an agent repeats states, errors, or tool outputs.
+    Supports both consecutive repetition tracking (A -> A -> A) and sliding-window
+    non-consecutive cyclic loop detection (A -> B -> A -> B -> A) via SHA-256 hashing.
     """
-    def __init__(self, threshold: int = 3):
-        self.threshold = threshold
-        self.last_item = None
-        self.count = 0
+    def __init__(
+        self,
+        threshold: int = 3,
+        window_size: int = 10,
+        consecutive_only: bool = False,
+    ):
+        self.threshold = max(2, threshold)
+        self.window_size = max(self.threshold, window_size)
+        self.consecutive_only = consecutive_only
+        self.history: deque[str] = deque(maxlen=self.window_size)
+        self.hash_counts: Counter[str] = Counter()
+        self.last_item: Optional[str] = None
+        self.consecutive_count: int = 0
+
+    def _hash_item(self, item: str) -> str:
+        """Computes a compact SHA-256 digest of the item string."""
+        return hashlib.sha256(item.encode("utf-8")).hexdigest()[:16]
 
     def check(self, item: str) -> bool:
         """
-        Returns True if the item has been repeated `threshold` times consecutively.
+        Records the item and returns True if repetition threshold is reached.
+        - In consecutive_only mode: returns True if repeated `threshold` times consecutively.
+        - In sliding-window mode (default): returns True if either:
+          a) repeated `threshold` times consecutively, OR
+          b) appears `threshold` times within the sliding window of `window_size`.
         """
-        if not item:
-            self.reset()
+        if not item or not isinstance(item, str):
             return False
 
-        if item == self.last_item:
-            self.count += 1
-        else:
-            self.count = 1
-            self.last_item = item
-            
-        return self.count >= self.threshold
+        item_str = item.strip()
+        if not item_str:
+            return False
 
-    def reset(self):
-        """Resets the tracker."""
-        self.count = 0
+        # 1. Check consecutive repetition
+        if item_str == self.last_item:
+            self.consecutive_count += 1
+        else:
+            self.consecutive_count = 1
+            self.last_item = item_str
+
+        if self.consecutive_count >= self.threshold:
+            return True
+
+        if self.consecutive_only:
+            return False
+
+        # 2. Check sliding-window non-consecutive repetition
+        item_hash = self._hash_item(item_str)
+
+        # If window is at capacity, remove the oldest element from counter before appending
+        if len(self.history) == self.window_size:
+            oldest_hash = self.history[0]
+            self.hash_counts[oldest_hash] -= 1
+            if self.hash_counts[oldest_hash] <= 0:
+                del self.hash_counts[oldest_hash]
+
+        self.history.append(item_hash)
+        self.hash_counts[item_hash] += 1
+
+        return self.hash_counts[item_hash] >= self.threshold
+
+    def get_count(self, item: str) -> int:
+        """Returns the number of times this item appears in the active window."""
+        item_hash = self._hash_item(item.strip())
+        return self.hash_counts.get(item_hash, 0)
+
+    def reset(self) -> None:
+        """Resets the history window and consecutive counter."""
+        self.history.clear()
+        self.hash_counts.clear()
         self.last_item = None
+        self.consecutive_count = 0
 
 
 class JsonExtractor:
