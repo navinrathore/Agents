@@ -32,6 +32,7 @@ from core.output_guard import (
     ToolOutputTruncator,
     TruncationResult,
 )
+from core.pointer_tools import PointerToolSuite, normalize_pointer_id
 
 __all__ = [
     "AsyncToolDispatcher",
@@ -48,6 +49,7 @@ __all__ = [
     "OutputGuard",
     "OutputGuardMode",
     "OutputGuardResult",
+    "PointerToolSuite",
     "ReviewRequestPayload",
     "TelegramChannel",
     "ToolExecutionResult",
@@ -55,5 +57,6 @@ __all__ = [
     "TruncationResult",
     "WebhookChannel",
     "is_coroutine_callable",
+    "normalize_pointer_id",
     "to_async_tool",
 ]
