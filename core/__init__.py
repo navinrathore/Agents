@@ -39,6 +39,7 @@ from core.output_guard import (
     TruncationResult,
 )
 from core.pointer_tools import PointerToolSuite, normalize_pointer_id
+from core.sanitizer import CodeSanitizer, ExtractionStrategy, SanitizationResult
 from core.skills import (
     SkillManager,
     SkillMetadata,
@@ -56,8 +57,10 @@ __all__ = [
     "AsyncToolDispatcher",
     "BaseNotificationChannel",
     "BasePayloadStore",
+    "CodeSanitizer",
     "ConsoleChannel",
     "DataPointer",
+    "ExtractionStrategy",
     "HITLApprovalGate",
     "LocalDiskPayloadStore",
     "MockChannel",
@@ -70,6 +73,7 @@ __all__ = [
     "OutputGuardResult",
     "PointerToolSuite",
     "ReviewRequestPayload",
+    "SanitizationResult",
     "SkillManager",
     "SkillMetadata",
     "SkillPackage",
