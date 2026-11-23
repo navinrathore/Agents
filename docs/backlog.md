@@ -21,12 +21,12 @@ The following items represent architectural improvements for the autonomous agen
 - [x] 🟡 P1 **Human-in-the-Loop (HITL) Checkpoints / UX Friction (`core/hitl.py`)**: Implement stateful pause/resume mechanisms for high-risk tool execution. When an agent requests a sensitive action, pause the loop, dispatch a review notification (Telegram, Webhook, Console, Mock), and resume execution with the user's explicit approval or rejection injected back into context. #ux #security
 
 ### Group 2: Token Accounting & Cost Tracking
-- [ ] 🟡 P1 **TokenCounter & CostTracker**: Calculate exact token usage per model (using model-specific tokenizers or tiktoken) and track cumulative API spend (input vs. output tokens) across agent loops. #observability #cost
+- [ ] 🟡 P1 **TokenCounter & CostTracker (`core/cost.py`)**: Calculate exact token usage per model (using model-specific tokenizers or tiktoken) and track cumulative API spend (input vs. output tokens) across agent loops. #observability #cost
 
 ### Group 3: Resilience & State Persistence (Crash Recovery)
-- [ ] 🔴 P0 **CheckpointManager / StateSerializer**: Serialize and hydrate agent loop state (messages, checklist, active SOP, tool outputs) to JSON/SQLite for crash recovery and checkpoint resumption. #reliability #resilience
+- [ ] 🔴 P0 **CheckpointManager / StateSerializer (`core/checkpoint.py`)**: Serialize and hydrate agent loop state (messages, checklist, active SOP, tool outputs) to JSON/SQLite for crash recovery and checkpoint resumption. #reliability #resilience
 - [ ] 🟢 P2 **Semantic Memory Graph (`NetworkX` / `Kùzu`)**: Maintain an in-memory entity/fact graph across multi-turn ReAct loops to store validated environment knowledge, schema discoveries, and task milestones without saturating prompt context. #architecture #memory
-- [ ] 🔴 P0 **ExponentialBackoffRetry**: Reusable retry decorator/context manager with jitter for LLM API calls to gracefully handle rate limits (`429`), network glitches, and transient timeouts. #reliability #resilience
+- [ ] 🔴 P0 **ExponentialBackoffRetry (`core/resilience.py`)**: Reusable retry decorator/context manager with jitter for LLM API calls to gracefully handle rate limits (`429`), network glitches, and transient timeouts. #reliability #resilience
 
 ### Group 4: Structured Output Parsing
 - [x] 🔴 P0 **JsonExtractor & SchemaValidator**: Extract embedded JSON objects from raw LLM text outputs and validate structure against Pydantic models (or raw dictionary key/type schemas when Pydantic models are not present). #reliability #architecture
@@ -34,8 +34,8 @@ The following items represent architectural improvements for the autonomous agen
 - [ ] 🟢 P2 **[Logits Tweaking Spike] Standalone Constrained Decoding & Fast-Forwarding Test**: Implement a minimal PyTorch/HuggingFace `LogitsProcessor` or Outlines/XGrammar prototype testing custom logit masking ($-\infty$ to non-DFA tokens) and static token fast-forwarding to measure latency and token savings. #performance #research
 
 ### Group 5: Observability, Telemetry & Security
-- [ ] 🔴 P0 **PIIRedactor & SecretSanitizer**: Redact sensitive data (API keys, passwords, bearer tokens, PII) from agent inputs, tool outputs, and execution logs. #security #compliance
-- [ ] 🟡 P1 **TrajectoryLogger**: Dual-transcript logging helper (`transcript.jsonl` with truncated parameters and `transcript_full.jsonl` with complete raw payloads) for daily debugging and trajectory evaluation. #observability #telemetry
+- [ ] 🔴 P0 **PIIRedactor & SecretSanitizer (`core/security.py`)**: Redact sensitive data (API keys, passwords, bearer tokens, PII) from agent inputs, tool outputs, and execution logs. #security #compliance
+- [ ] 🟡 P1 **TrajectoryLogger (`core/telemetry.py`)**: Dual-transcript logging helper (`transcript.jsonl` with truncated parameters and `transcript_full.jsonl` with complete raw payloads) for daily debugging and trajectory evaluation. #observability #telemetry
 - [ ] 🔴 P0 **Dynamic Context Minimization (Summarize-and-Forget)**: Implement summarize-and-forget patterns to aggressively truncate conversation history and remove raw untrusted data (like tool outputs from malicious PDFs) from the context window, reducing the persistent prompt injection attack surface. #security #performance
 
 ### Group 6: Modular Skill Registry & Plugin Architecture
