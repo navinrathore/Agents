@@ -136,9 +136,10 @@ class BaseLLMClient:
             or os.getenv("LLM_STRUCTURED_OUTPUT_MODE", "auto")
         ).lower()
         self.messages: List[Dict[str, Any]] = []
-        self.system_prompt: str = ""
+        self.system_prompt: Union[str, List[Dict[str, Any]]] = ""
 
-    def set_system_prompt(self, prompt: str):
+    def set_system_prompt(self, prompt: Union[str, List[Dict[str, Any]]]):
+        """Set system prompt as plain string or structured block list (e.g. for Anthropic prompt caching)."""
         self.system_prompt = prompt
 
     def count_tokens(self) -> int:

@@ -45,6 +45,18 @@ from core.notifications import (
     TelegramChannel,
     WebhookChannel,
 )
+from core.rules import (
+    RuleMetadata,
+    RulePackage,
+    CompiledPromptPrefix,
+    RuleRegistry,
+    RuleManager,
+    RuleEngineError,
+    RuleParseError,
+    ImmutableRuleOverrideError,
+    VolatilePromptPrefixError,
+    parse_rule_file,
+)
 from core.openapi_loader import OpenAPIToolLoader
 from core.output_guard import (
     BasePayloadStore,
