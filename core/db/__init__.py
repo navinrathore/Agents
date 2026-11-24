@@ -8,6 +8,14 @@ from .engine import (
     QueryResult,
     DatabaseEngine,
 )
+from .sanitizer import (
+    SqlSanitizationError,
+    SqlSyntaxError,
+    MultiStatementQueryError,
+    UnsafeQueryError,
+    SanitizedQuery,
+    SqlSanitizer,
+)
 
 __all__ = [
     "ColumnMetadata",
@@ -16,4 +24,11 @@ __all__ = [
     "DatabaseSchema",
     "QueryResult",
     "DatabaseEngine",
+    "SqlSanitizationError",
+    "SqlSyntaxError",
+    "MultiStatementQueryError",
+    "UnsafeQueryError",
+    "SanitizedQuery",
+    "SqlSanitizer",
 ]
+
