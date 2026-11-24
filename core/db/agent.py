@@ -147,10 +147,15 @@ class DatabaseAgent(BaseDatabaseAgent):
             pointer_id = None
             rendered_rows = json.dumps(query_result.rows, indent=2, default=str)
 
-            if self.output_guard and len(rendered_rows) > 4000:
-                guard_res = self.output_guard.process_output(rendered_rows)
-                rendered_rows = guard_res.get("content", rendered_rows)
-                pointer_id = guard_res.get("pointer_id")
+            if self.output_guard and len(rendered_rows) > self.output_guard.threshold_chars:
+                guard_res = self.output_guard.process(
+                    output=rendered_rows,
+                    tool_name="execute_sql",
+                    custom_metadata={"dialect": self.engine.dialect, "sql": sanitized.sql},
+                )
+                rendered_rows = guard_res.content
+                if guard_res.data_pointer:
+                    pointer_id = guard_res.data_pointer.pointer_id
 
             # 6. Ask LLM to synthesize final natural language answer
             synth_messages: List[Dict[str, str]] = [

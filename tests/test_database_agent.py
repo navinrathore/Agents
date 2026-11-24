@@ -189,3 +189,107 @@ def test_database_agent_circuit_breaker_max_loops_exceeded(test_db):
     assert resp.loops_taken == 2
     assert resp.metadata.get("max_loops_exceeded") is True
     assert "Database Runtime Error" in resp.error
+
+
+def test_database_agent_e2e_multi_table_joins(test_db):
+    """End-to-end multi-table test with schema reflection, JOINs, and aggregates."""
+    # Seed extra relational table 'orders'
+    with test_db.begin() as conn:
+        conn.execute(
+            text(
+                """
+            CREATE TABLE orders (
+                order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER,
+                quantity INTEGER NOT NULL,
+                order_date TEXT,
+                FOREIGN KEY (product_id) REFERENCES products(id)
+            );
+            """
+            )
+        )
+        conn.execute(
+            text(
+                """
+            INSERT INTO orders (product_id, quantity, order_date) VALUES
+            (1, 2, '2026-11-01'),
+            (1, 1, '2026-11-02'),
+            (2, 5, '2026-11-03');
+            """
+            )
+        )
+
+    engine = DatabaseEngine(test_db)
+    mock_llm = MockLLMClient(
+        [
+            """```sql
+            SELECT p.title, SUM(o.quantity) AS total_sold, SUM(o.quantity * p.price) AS revenue
+            FROM products p
+            JOIN orders o ON p.id = o.product_id
+            GROUP BY p.title
+            ORDER BY revenue DESC
+            ```""",
+            "Laptop Pro generated the highest revenue ($3600.0) with 3 units sold.",
+        ]
+    )
+
+    agent = DatabaseAgent(
+        engine=engine,
+        llm_client=mock_llm,
+        max_loops=3,
+    )
+
+    # Verify multi-table DDL schema is in prompt
+    assert "CREATE TABLE orders" in agent._static_system_prompt
+    assert "FOREIGN KEY (product_id) REFERENCES products" in agent._static_system_prompt
+
+    resp = agent.run("What is the top-selling product by total revenue?")
+    assert resp.success is True
+    assert resp.query_result is not None
+    assert resp.query_result.row_count == 2
+    assert "Laptop Pro" in resp.answer
+    assert "revenue DESC" in resp.sql
+
+
+def test_database_agent_output_guard_pointer_offloading(tmp_path, test_db):
+    """Verifies that large result sets are intercepted and offloaded via OutputGuard."""
+    from core.output_guard import OutputGuard, OutputGuardMode
+
+    # Seed 100 rows into products to create a large JSON output
+    with test_db.begin() as conn:
+        for i in range(100):
+            conn.execute(
+                text(
+                    f"INSERT INTO products (title, category, price) VALUES ('Item {i}', 'Bulk', {i * 10.0})"
+                )
+            )
+
+    guard = OutputGuard(
+        mode=OutputGuardMode.OFFLOAD_AND_TRUNCATE,
+        threshold_chars=500,  # low threshold to trigger offload
+        storage_dir=tmp_path / "pointers",
+    )
+
+    engine = DatabaseEngine(test_db)
+    mock_llm = MockLLMClient(
+        [
+            "```sql\nSELECT * FROM products\n```",
+            "Retrieved 103 products. Full output offloaded to data pointer.",
+        ]
+    )
+
+    agent = DatabaseAgent(
+        engine=engine,
+        llm_client=mock_llm,
+        output_guard=guard,
+        default_limit=200,
+    )
+
+    resp = agent.run("Fetch all bulk products.")
+    assert resp.success is True
+    assert resp.pointer_id is not None
+    assert resp.pointer_id.startswith("ptr_")
+    # Verify the offloaded file exists on disk
+    pointer_files = list((tmp_path / "pointers").glob(f"{resp.pointer_id}.*"))
+    assert len(pointer_files) >= 1
+
