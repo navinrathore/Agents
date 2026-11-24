@@ -1,8 +1,9 @@
 import asyncio
 import inspect
+import json
+import logging
 import time
 from dataclasses import asdict, dataclass
-import logging
 from typing import Any, Callable, Coroutine, Dict, List, Optional, Set, Union
 
 from core.hitl import ApprovalDecision, ApprovalRequest, ApprovalStatus, HITLApprovalGate
@@ -16,7 +17,7 @@ class ToolExecutionResult:
     """Represents the structured execution outcome of a single tool call."""
     tool_call_id: str
     name: str
-    result: str
+    result: Any
     success: bool = True
     error: Optional[str] = None
     duration: float = 0.0
@@ -24,6 +25,7 @@ class ToolExecutionResult:
     is_offloaded: bool = False
     is_truncated: bool = False
     approval_status: Optional[str] = None
+    raw_output: Any = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -86,6 +88,45 @@ class AsyncToolDispatcher:
             self.output_guard = OutputGuard(mode=OutputGuardMode.OFFLOAD_AND_TRUNCATE)
         else:
             self.output_guard = None
+
+        # Register default pipeline execution meta-tool
+        self._register_pipeline_tool()
+
+    def _register_pipeline_tool(self) -> None:
+        """Registers the execute_tool_pipeline meta-tool for chained DAG execution."""
+        from core.chain import OnErrorStrategy, PipelineSpec, ToolPipelineEngine
+
+        async def _execute_pipeline_meta(
+            steps: List[Dict[str, Any]],
+            on_error: str = "halt",
+            timeout: Optional[float] = None,
+        ) -> str:
+            spec = PipelineSpec(
+                steps=steps,
+                on_error=OnErrorStrategy(on_error.lower()),
+                timeout=timeout,
+            )
+
+            async def _executor(tool_name: str, inputs: Dict[str, Any], step_timeout: Optional[float]) -> Any:
+                call_id = f"step_{int(time.perf_counter()*1000)}"
+                tc = {"id": call_id, "name": tool_name, "input": inputs}
+                return await self._execute_single_tool(tc, timeout=step_timeout or self.default_timeout)
+
+            engine = ToolPipelineEngine(
+                executor_fn=_executor,
+                default_timeout=self.default_timeout,
+                max_concurrency=self.max_concurrency,
+            )
+            res = await engine.execute_pipeline(spec)
+            return json.dumps(res.to_summary_dict(), indent=2)
+
+        self.register_tool(
+            "execute_tool_pipeline",
+            _execute_pipeline_meta,
+            is_async=True,
+            sequential_only=False,
+            require_approval=False,
+        )
 
     @property
     def semaphore(self) -> asyncio.Semaphore:
@@ -202,6 +243,56 @@ class AsyncToolDispatcher:
 
         tool_fn = self.tools[name]
 
+        # Auto-resolve nested tool dictionaries in inputs: {"$tool": ..., "$input": ...}
+        from core.chain import unroll_nested_dict_calls, PipelineSpec, ToolPipelineEngine
+        unrolled = unroll_nested_dict_calls(inputs)
+        if isinstance(unrolled, dict) and "pipeline_steps" in unrolled:
+            nested_steps = unrolled["pipeline_steps"]
+            resolved_parent_inputs = unrolled["resolved_input"]
+
+            # Add final step representing the current tool execution
+            final_step_id = f"step_{tool_id or name}"
+            from core.chain import PipelineStep
+            nested_steps.append(PipelineStep(
+                id=final_step_id,
+                tool=name,
+                input=resolved_parent_inputs,
+                depends_on=[s.id for s in nested_steps],
+            ))
+
+            pipeline_spec = PipelineSpec(steps=nested_steps)
+            async def _pipeline_step_executor(sub_tool: str, sub_inputs: Dict[str, Any], sub_timeout: Optional[float]) -> Any:
+                sub_tc = {"id": f"sub_{int(time.perf_counter()*1000)}", "name": sub_tool, "input": sub_inputs}
+                return await self._execute_single_tool(sub_tc, timeout=sub_timeout or timeout)
+
+            pipeline_engine = ToolPipelineEngine(
+                executor_fn=_pipeline_step_executor,
+                default_timeout=timeout,
+                max_concurrency=self.max_concurrency,
+            )
+            pipe_res = await pipeline_engine.execute_pipeline(pipeline_spec)
+            duration = time.perf_counter() - start_time
+            if not pipe_res.success:
+                return ToolExecutionResult(
+                    tool_call_id=tool_id,
+                    name=name,
+                    result=pipe_res.error or "Nested pipeline failed",
+                    success=False,
+                    error=pipe_res.error,
+                    duration=round(duration, 4),
+                )
+            # Use final step result
+            final_step_res = pipe_res.step_results.get(final_step_id)
+            final_val = final_step_res.output if final_step_res else pipe_res.final_output
+            return ToolExecutionResult(
+                tool_call_id=tool_id,
+                name=name,
+                result=str(final_val) if final_val is not None else "",
+                success=True,
+                error=None,
+                duration=round(duration, 4),
+            )
+
         # Check security / HITL approval gate
         is_sensitive = (name in self.sensitive_tools)
         if not is_sensitive and self.risk_predicate is not None:
@@ -282,6 +373,7 @@ class AsyncToolDispatcher:
                 is_offloaded=is_offloaded,
                 is_truncated=is_truncated,
                 approval_status=approval_status_val,
+                raw_output=res,
             )
         except asyncio.TimeoutError:
             duration = time.perf_counter() - start_time
