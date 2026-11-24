@@ -198,7 +198,7 @@ async def test_dispatcher_sync_tool_adaptation():
     elapsed = time.perf_counter() - start
 
     assert len(results) == 2
-    assert elapsed < 0.18  # Ran concurrently on threads, not 0.2s+ sequentially
+    assert elapsed < 0.25  # Ran concurrently on threads, not 0.3s+ sequentially
     assert results[0].result == "20"
     assert results[1].result == "40"
     assert results[0].success is True

@@ -288,3 +288,77 @@ Tier 3 Custom
     assert anthropic_fmt[0]["cache_control"] == {"type": "ephemeral"}
 
 
+# --- Phase 5: RuleLinter & CLI Tests ---
+
+from core.rules import RuleLinter, run_cli
+
+
+def test_rule_linter_detects_malformed_yaml(tmp_path: Path) -> None:
+    bad_rule = tmp_path / "broken.md"
+    bad_rule.write_text("""---
+name: [unclosed
+priority: 10
+---
+body
+""", encoding="utf-8")
+
+    linter = RuleLinter(search_paths=[tmp_path])
+    report = linter.lint_all()
+    assert report.scanned_files_count == 1
+    assert report.error_count == 1
+    assert report.valid_rules_count == 0
+    assert "Syntax/Schema Error" in report.issues[0].message
+
+
+def test_rule_linter_detects_volatile_tokens(tmp_path: Path) -> None:
+    volatile_rule = tmp_path / "volatile.md"
+    volatile_rule.write_text("""---
+name: volatile_rule
+scope: ["*"]
+priority: 30
+---
+Rule created on 2026-11-24T12:00:00Z for session ${SESSION_ID}.
+""", encoding="utf-8")
+
+    linter = RuleLinter(search_paths=[tmp_path])
+    report = linter.lint_all()
+    assert report.scanned_files_count == 1
+    assert report.error_count >= 1
+    assert any("Volatile datetime token" in i.message for i in report.issues)
+
+
+def test_rule_linter_detects_empty_body(tmp_path: Path) -> None:
+    empty_rule = tmp_path / "empty.md"
+    empty_rule.write_text("""---
+name: empty_rule
+scope: ["*"]
+priority: 30
+---
+""", encoding="utf-8")
+
+    linter = RuleLinter(search_paths=[tmp_path])
+    report = linter.lint_all()
+    assert report.warning_count == 1
+    assert "markdown body is empty" in report.issues[0].message
+
+
+def test_rule_linter_cli_entrypoint(tmp_path: Path, capsys) -> None:
+    valid_rule = tmp_path / "valid.md"
+    valid_rule.write_text("""---
+name: valid_rule
+scope: ["test"]
+priority: 40
+---
+# Valid Rule
+Content that is completely clean and valid.
+""", encoding="utf-8")
+
+    # Run CLI successfully
+    exit_code = run_cli(["lint", str(tmp_path)])
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert "RULES ENGINE LINTER REPORT" in captured.out
+    assert "Linting PASSED" in captured.out
+
+
+

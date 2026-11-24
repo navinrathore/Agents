@@ -85,7 +85,7 @@ class CompiledPromptPrefix:
 
 # --- Regex Patterns for Normalization & Parsing ---
 
-_FRONTMATTER_PATTERN = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*\r?\n(.*)$", re.DOTALL)
+_FRONTMATTER_PATTERN = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n(.*))?$", re.DOTALL)
 
 
 def normalize_content(text: str) -> str:
@@ -137,6 +137,7 @@ def parse_rule_file(file_path: Path | str) -> RulePackage:
         return RulePackage(metadata=metadata, content=normalized_raw)
 
     yaml_block, body_content = match.groups()
+    body_content = body_content or ""
 
     try:
         data = yaml.safe_load(yaml_block) or {}
@@ -509,5 +510,226 @@ class RuleManager:
         if "anthropic" in provider_norm or "claude" in provider_norm:
             return compiled.cache_control_blocks
         return compiled.system_prompt
+
+
+# --- Phase 5: Rules Engine Linter CLI (`python -m core.rules lint`) ---
+
+import argparse
+import sys
+
+
+@dataclass
+class LintIssue:
+    """Represents a diagnostic issue found by the linter."""
+    level: str  # 'ERROR', 'WARNING', 'INFO'
+    file_path: Path
+    message: str
+    rule_name: Optional[str] = None
+
+
+@dataclass
+class LintReport:
+    """Summary of a linter run across one or more rule paths."""
+    scanned_files_count: int = 0
+    valid_rules_count: int = 0
+    issues: List[LintIssue] = field(default_factory=list)
+
+    @property
+    def error_count(self) -> int:
+        return sum(1 for i in self.issues if i.level == "ERROR")
+
+    @property
+    def warning_count(self) -> int:
+        return sum(1 for i in self.issues if i.level == "WARNING")
+
+    @property
+    def info_count(self) -> int:
+        return sum(1 for i in self.issues if i.level == "INFO")
+
+    @property
+    def has_errors(self) -> bool:
+        return self.error_count > 0
+
+
+class RuleLinter:
+    """Static analysis and validation engine for declarative rule markdown files.
+    
+    Verifies:
+    - YAML frontmatter schema conformance (`name`, `scope`, `priority`, `immutable`, `enabled`)
+    - Volatile dynamic token absence (ISO datetimes, UUIDs, unrendered templates)
+    - Token budget diagnostics (< 1,024 token warnings for KV cache activation)
+    - Markdown body formatting and empty content detection
+    - Non-overridable Tier 1 invariant consistency
+    """
+
+    def __init__(self, search_paths: Optional[List[Path | str]] = None) -> None:
+        self.search_paths: List[Path] = [Path(p) for p in (search_paths or [Path("rules")])]
+
+    def lint_file(self, file_path: Path | str) -> List[LintIssue]:
+        path = Path(file_path)
+        issues: List[LintIssue] = []
+
+        if not path.exists():
+            issues.append(LintIssue(level="ERROR", file_path=path, message="File does not exist"))
+            return issues
+
+        if not path.is_file():
+            issues.append(LintIssue(level="ERROR", file_path=path, message="Path is not a regular file"))
+            return issues
+
+        if not path.name.endswith(".md"):
+            issues.append(LintIssue(level="WARNING", file_path=path, message="File does not have a .md extension"))
+
+        try:
+            pkg = parse_rule_file(path)
+        except RuleParseError as e:
+            issues.append(LintIssue(level="ERROR", file_path=path, message=f"Syntax/Schema Error: {e}"))
+            return issues
+        except Exception as e:
+            issues.append(LintIssue(level="ERROR", file_path=path, message=f"Unreadable file: {e}"))
+            return issues
+
+        rule_name = pkg.metadata.name
+
+        # 1. Frontmatter Checks
+        if not pkg.metadata.name or pkg.metadata.name.strip() == "":
+            issues.append(LintIssue(level="ERROR", file_path=path, message="Rule 'name' cannot be empty", rule_name=rule_name))
+
+        if not pkg.metadata.scope:
+            issues.append(LintIssue(level="WARNING", file_path=path, message="Rule scope is empty; defaults to wildcard ['*']", rule_name=rule_name))
+
+        # 2. Tier 1 Invariant checks
+        if pkg.metadata.priority < 20 and not pkg.metadata.immutable:
+            # RuleMetadata forces it to True, but if user explicitly wrote immutable: false in yaml:
+            issues.append(LintIssue(
+                level="INFO",
+                file_path=path,
+                message=f"Rule has priority {pkg.metadata.priority} (< 20). Automatically marked as Tier 1 Immutable Invariant.",
+                rule_name=rule_name,
+            ))
+
+        # 3. Volatile Token Validation in content
+        try:
+            assert_no_volatile_tokens(pkg.content, context_label=f"rule '{rule_name}'")
+        except VolatilePromptPrefixError as e:
+            issues.append(LintIssue(level="ERROR", file_path=path, message=str(e), rule_name=rule_name))
+
+        # 4. Content empty check
+        if not pkg.content.strip():
+            issues.append(LintIssue(level="WARNING", file_path=path, message="Rule markdown body is empty", rule_name=rule_name))
+
+        # 5. Token count estimate diagnostics
+        token_estimate = max(1, len(pkg.content) // 4)
+        if token_estimate < 100:
+            issues.append(LintIssue(
+                level="INFO",
+                file_path=path,
+                message=f"Small rule ({token_estimate} estimated tokens). Must be compounded with other rules/schema to meet provider cache thresholds (>= 1,024 tokens).",
+                rule_name=rule_name,
+            ))
+
+        return issues
+
+    def lint_all(self) -> LintReport:
+        report = LintReport()
+        visited_files: Set[Path] = set()
+
+        for base_path in self.search_paths:
+            if base_path.is_file():
+                files = [base_path]
+            elif base_path.is_dir():
+                files = sorted(base_path.glob("**/*.md"))
+            else:
+                report.issues.append(LintIssue(level="ERROR", file_path=base_path, message="Search path does not exist"))
+                continue
+
+            for file_path in files:
+                resolved = file_path.resolve()
+                if resolved in visited_files:
+                    continue
+                visited_files.add(resolved)
+
+                report.scanned_files_count += 1
+                file_issues = self.lint_file(file_path)
+                report.issues.extend(file_issues)
+
+                if not any(i.level == "ERROR" for i in file_issues):
+                    report.valid_rules_count += 1
+
+        return report
+
+
+def run_cli(args: Optional[List[str]] = None) -> int:
+    """CLI entrypoint for running rule verification and linting."""
+    parser = argparse.ArgumentParser(
+        prog="python -m core.rules",
+        description="Universal Rules Engine CLI & Static Linter",
+    )
+    subparsers = parser.add_subparsers(dest="subcommand", help="Subcommand to execute")
+
+    lint_parser = subparsers.add_parser("lint", help="Lint and validate rule markdown files")
+    lint_parser.add_argument(
+        "paths",
+        nargs="*",
+        default=["projects/Agents/rules"],
+        help="Directories or files to lint (default: projects/Agents/rules)",
+    )
+    lint_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Treat warnings as errors (exit with non-zero status on warnings)",
+    )
+    lint_parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Only display errors and summary",
+    )
+
+    parsed = parser.parse_args(args)
+
+    if parsed.subcommand != "lint":
+        parser.print_help()
+        return 1
+
+    search_paths = [Path(p) for p in parsed.paths]
+    linter = RuleLinter(search_paths=search_paths)
+    report = linter.lint_all()
+
+    # Print output
+    print("==================================================")
+    print("           RULES ENGINE LINTER REPORT             ")
+    print("==================================================")
+    print(f" Scanned: {report.scanned_files_count} file(s)")
+    print(f" Valid:   {report.valid_rules_count} rule(s)")
+    print(f" Errors:   {report.error_count}")
+    print(f" Warnings: {report.warning_count}")
+    print(f" Info:     {report.info_count}")
+    print("--------------------------------------------------")
+
+    for issue in report.issues:
+        if parsed.quiet and issue.level != "ERROR":
+            continue
+
+        icon = "🔴" if issue.level == "ERROR" else ("🟡" if issue.level == "WARNING" else "ℹ️")
+        rule_tag = f" [{issue.rule_name}]" if issue.rule_name else ""
+        print(f" {icon} {issue.level}{rule_tag}: {issue.file_path}")
+        print(f"    └─ {issue.message}")
+
+    print("==================================================")
+
+    if report.has_errors:
+        print("❌ Linting FAILED: Fix reported errors.")
+        return 1
+    elif parsed.strict and report.warning_count > 0:
+        print("❌ Linting FAILED (--strict): Warnings treated as errors.")
+        return 1
+    else:
+        print("✅ Linting PASSED: All rules conform to specifications.")
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(run_cli())
+
 
 

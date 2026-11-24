@@ -55,6 +55,9 @@ from core.rules import (
     RuleParseError,
     ImmutableRuleOverrideError,
     VolatilePromptPrefixError,
+    RuleLinter,
+    LintIssue,
+    LintReport,
     parse_rule_file,
 )
 from core.openapi_loader import OpenAPIToolLoader
