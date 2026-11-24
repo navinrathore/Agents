@@ -10,6 +10,7 @@ import json
 from core.llm_clients import BaseLLMClient
 from core.output_guard import OutputGuard
 from core.hitl import HITLApprovalGate
+from core.rules import RuleManager
 
 from .base import BaseDatabaseAgent, DatabaseAgentResponse
 from .engine import DatabaseEngine, DatabaseSchema, QueryResult
@@ -35,6 +36,7 @@ class DatabaseAgent(BaseDatabaseAgent):
         max_limit: int = 1000,
         included_tables: Optional[List[str]] = None,
         excluded_tables: Optional[List[str]] = None,
+        rule_manager: Optional[RuleManager] = None,
     ):
         self.engine = engine
         self.llm_client = llm_client
@@ -44,6 +46,7 @@ class DatabaseAgent(BaseDatabaseAgent):
         self.max_loops = max_loops
         self.default_limit = default_limit
         self.max_limit = max_limit
+        self.rule_manager = rule_manager
 
         # Reflect database schema once to maintain a static, prompt-caching friendly prefix
         self.schema: DatabaseSchema = self.engine.introspect_schema(
@@ -56,6 +59,21 @@ class DatabaseAgent(BaseDatabaseAgent):
 
     def _build_system_prompt(self) -> str:
         """Constructs a deterministic, static system prompt with DDL schemas and rules."""
+        if self.rule_manager:
+            role = (
+                "You are an expert Database and SQL Assistant.\n"
+                f"Target Database Dialect: {self.engine.dialect.upper()}"
+            )
+            extra_context = [
+                f"### DATABASE SCHEMA & SAMPLE DATA:\n{self.schema.generated_ddl}"
+            ]
+            compiled = self.rule_manager.compile_system_prefix(
+                agent_role=role,
+                scopes=["database", "sql"],
+                extra_static_blocks=extra_context,
+            )
+            return compiled.system_prompt
+
         return (
             "You are an expert Database and SQL Assistant.\n"
             f"Target Database Dialect: {self.engine.dialect.upper()}\n\n"

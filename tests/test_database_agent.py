@@ -293,3 +293,37 @@ def test_database_agent_output_guard_pointer_offloading(tmp_path, test_db):
     pointer_files = list((tmp_path / "pointers").glob(f"{resp.pointer_id}.*"))
     assert len(pointer_files) >= 1
 
+
+def test_database_agent_with_rule_manager(test_db):
+    """Verifies that DatabaseAgent integrates with RuleManager and injects declarative rules."""
+    from core.rules import RuleRegistry, RuleManager
+    from pathlib import Path
+
+    rules_path = Path(__file__).parent.parent / "rules"
+    registry = RuleRegistry(search_paths=[rules_path])
+    rule_manager = RuleManager(registry=registry)
+
+    engine = DatabaseEngine(test_db)
+    mock_llm = MockLLMClient(
+        [
+            "```sql\nSELECT * FROM products\n```",
+            "Found 3 products in inventory.",
+        ]
+    )
+
+    agent = DatabaseAgent(
+        engine=engine,
+        llm_client=mock_llm,
+        rule_manager=rule_manager,
+    )
+
+    # Verify that the static system prompt includes declarative rules from disk
+    assert "Universal Global Invariants" in agent._static_system_prompt
+    assert "Relational Database Invariants" in agent._static_system_prompt
+    assert "DATABASE SCHEMA & SAMPLE DATA" in agent._static_system_prompt
+
+    resp = agent.run("Show all products")
+    assert resp.success is True
+    assert "products" in resp.answer.lower()
+
+
