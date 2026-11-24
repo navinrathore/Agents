@@ -269,3 +269,71 @@ async def test_skill_manager_dynamic_mounting_and_execution():
     clean_prompt = manager.build_system_prompt(base_prompt)
     assert clean_prompt == base_prompt
 
+
+@pytest.mark.anyio
+async def test_database_agent_skill_discovery_and_execution():
+    from core.dispatcher import AsyncToolDispatcher
+    from core.db import DatabaseEngine
+    from sqlalchemy import create_engine, text
+    from sqlalchemy.pool import StaticPool
+
+    # Set up in-memory DB with StaticPool so worker threads share the exact same in-memory DB
+    db = create_engine(
+        "sqlite:///:memory:",
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
+    )
+    with db.begin() as conn:
+        conn.execute(text("CREATE TABLE customers (id INT PRIMARY KEY, name TEXT, balance REAL)"))
+        conn.execute(text("INSERT INTO customers VALUES (1, 'Alice Corp', 5000.0), (2, 'Bob Ltd', 1200.0)"))
+
+    engine = DatabaseEngine(db)
+
+    # Configure skill
+    skills_dir = Path(__file__).resolve().parent.parent / "skills"
+    registry = SkillRegistry(search_paths=[skills_dir])
+    discovered = registry.discover_skills()
+    assert "database_agent" in discovered
+
+    # Inject active engine into the skill's loaded callables
+    skill_pkg = discovered["database_agent"]
+    list_tables_fn = skill_pkg.tool_callables["list_tables"]
+    list_tables_fn.__globals__["set_database_engine"](engine)
+
+    manager = SkillManager(registry=registry)
+    dispatcher = AsyncToolDispatcher()
+    activated = manager.activate_skills(["database_agent"], dispatcher=dispatcher)
+    assert "database_agent" in activated
+
+    # 1. Test tool discovery on dispatcher
+    assert dispatcher.has_tool("list_tables")
+    assert dispatcher.has_tool("get_table_schema")
+    assert dispatcher.has_tool("execute_sql")
+
+    # 2. Execute list_tables via dispatcher
+    res_tables = await dispatcher.dispatch([{"id": "c1", "name": "list_tables", "input": {}}])
+    assert res_tables[0].success is True
+    assert "customers" in str(res_tables[0].result)
+
+    # 3. Execute safe query via dispatcher
+    res_query = await dispatcher.dispatch([
+        {"id": "c2", "name": "execute_sql", "input": {"sql": "SELECT name, balance FROM customers WHERE balance > 2000"}}
+    ])
+    assert res_query[0].success is True
+    assert "Alice Corp" in str(res_query[0].result)
+
+    # 4. Verify AST sanitization blocks DDL via skill
+    res_drop = await dispatcher.dispatch([
+        {"id": "c3", "name": "execute_sql", "input": {"sql": "DROP TABLE customers"}}
+    ])
+    assert res_drop[0].success is True
+    assert "'success': False" in str(res_drop[0].result)
+    assert "Only SELECT or WITH queries are permitted" in str(res_drop[0].result)
+
+    # 5. Verify SOP prompt injection
+    base = "Base system prompt."
+    sop_prompt = manager.build_system_prompt(base)
+    assert "Database Agent SOP" in sop_prompt
+    assert "Schema Discovery First" in sop_prompt
+
+
