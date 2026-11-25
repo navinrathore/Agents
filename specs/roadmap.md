@@ -55,8 +55,9 @@
 - [x] Full test suite (27 tests) in `tests/test_database_*.py` #testing
 
 ## Phase 9 — Universal Application Rules Engine (`RuleManager`)
-- [ ] 🔴 P0 Implement declarative rule discovery (`rules/*.md`) in `core/rules.py` #architecture #rules
-- [ ] 🔴 P0 Implement 3-tier precedence resolution (Immutable Invariants $\to$ Defaults $\to$ Contextual Overrides) #security #rules
-- [ ] 🔴 P0 Implement deterministic KV cache prompt compilation for BaseLLMClient #performance #rules
-- [ ] 🟡 P1 Create standard rule files (`00_global_invariants.md`, `10_security.md`, `20_sql.md`) #rules
-- [ ] 🟡 P1 Comprehensive test suite in `tests/test_rules.py` #testing
+- [x] Implement declarative rule discovery (`rules/*.md`) in `core/rules.py` #architecture #rules
+- [x] Implement 3-tier precedence resolution (Immutable Invariants $\to$ Defaults $\to$ Contextual Overrides) #security #rules
+- [x] Implement deterministic KV cache prompt compilation for BaseLLMClient #performance #rules
+- [x] Create standard rule files (`00_global_invariants.md`, `10_security_guardrails.md`, `20_sql_invariants.md`) #rules
+- [x] Implement `RuleLinter` & standalone CLI (`python -m core.rules lint`) #dx #tooling
+- [x] Comprehensive test suite (16 rule tests + `DatabaseAgent` integration) in `tests/test_rules.py` #testing
