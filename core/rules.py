@@ -84,7 +84,8 @@ class CompiledPromptPrefix:
 
 
 # --- Regex Patterns for Normalization & Parsing ---
-
+# eg. match example ---
+# ---  ---
 _FRONTMATTER_PATTERN = re.compile(r"^---\s*\r?\n(.*?)\r?\n---\s*(?:\r?\n(.*))?$", re.DOTALL)
 
 
@@ -148,6 +149,7 @@ def parse_rule_file(file_path: Path | str) -> RulePackage:
         raise RuleParseError(f"YAML frontmatter in {path} must be a dictionary, got {type(data).__name__}")
 
     # Extract fields with safe fallbacks
+    # Any additional fields may be added here
     name = str(data.get("name") or path.stem).strip().lower().replace(" ", "_")
     description = str(data.get("description", "")).strip()
 
@@ -232,12 +234,13 @@ class RuleRegistry:
                     files.sort()  # Alphabetical file traversal
 
                     for filename in files:
+                        # only markdown files are allowed
                         if not filename.endswith(".md"):
                             continue
 
                         file_path = root_path / filename
 
-                        # Cycle detection via inode
+                        # Cycle detection via inode. to avoid any infinite loops in case of symlinks
                         try:
                             stat_res = file_path.stat()
                             inode_key = (stat_res.st_dev, stat_res.st_ino)

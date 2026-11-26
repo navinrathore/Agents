@@ -33,7 +33,13 @@ projects/Agents/
 │   ├── memory.py              # 3-Tier Agent Memory Manager (Working, Episodic, Semantic)
 │   ├── mcp/                   # Shared Model Context Protocol (FastMCP) client & adapters
 │   ├── notifications.py       # Multi-Channel Remote Notification Gateway (Telegram, Slack, Webhook, Mock)
+│   ├── rules.py               # Universal Rules Engine (RuleRegistry, RuleManager, RuleLinter CLI)
 │   └── utils.py               # ExecutionTimer & RepetitionDetector
+│
+├── rules/                     # Declarative static rules (*.md with YAML frontmatter)
+│   ├── 00_global_invariants.md
+│   ├── 10_security_guardrails.md
+│   └── 20_sql_invariants.md
 │
 ├── data_analyst/              # Autonomous Data Analyst Agent
 │   ├── agent.py               # Main Data Analyst agent loop & execution routing
@@ -51,6 +57,7 @@ projects/Agents/
     ├── agentic_design_patterns.md
     ├── backlog.md
     ├── lessons_learned.md
+    ├── rules_engine.md
     └── skills_architecture.md
 ```
 
@@ -78,3 +85,40 @@ The framework provides an enterprise-grade 3-tier memory management engine in `c
 - **L3 Semantic Memory (`SemanticStore`)**: Persistent fact registry and user preference store.
 - **Checkpointing & Persistence**: Native `export_state()` and `import_state()` for serializing memory snapshots across turns and sessions.
 - **Verified Test Coverage**: Validated via `tests/test_agent_memory.py`.
+
+## 🛡️ Universal Rules Engine CLI & Configuration
+
+The framework provides a declarative 3-tier Rules Engine in [core/rules.py](core/rules.py) (`RuleRegistry`, `RuleManager`, `RuleLinter`) that compiles static `.md` rules from `rules/` into a deterministic, KV-cache-friendly system prompt prefix. See [docs/rules_engine.md](docs/rules_engine.md) for the full specification.
+
+> **Important**: Never place non-rule `.md` files (such as `README.md`) inside `rules/`. Every `.md` file in `rules/` is parsed and linted as a rule file.
+
+### Linter CLI Quickstart
+
+Run from `projects/Agents/` and pass `rules` explicitly:
+
+```bash
+# Validate all rule files in rules/
+/home/navin/work/AI/.venv/bin/python -m core.rules lint rules
+
+# Fail on warnings (--strict) or show errors + summary only (--quiet)
+/home/navin/work/AI/.venv/bin/python -m core.rules lint rules --strict
+/home/navin/work/AI/.venv/bin/python -m core.rules lint rules --quiet
+```
+
+### Python Configuration Quickstart
+
+```python
+from pathlib import Path
+from core.db import DatabaseAgent, DatabaseEngine
+from core.llm_clients import AnthropicClient
+from core.rules import RuleManager, RuleRegistry
+
+registry = RuleRegistry(search_paths=[Path("rules")])
+rule_manager = RuleManager(registry=registry)
+
+agent = DatabaseAgent(
+    engine=DatabaseEngine("sqlite:///example.db"),
+    llm_client=AnthropicClient(),
+    rule_manager=rule_manager,
+)
+```
